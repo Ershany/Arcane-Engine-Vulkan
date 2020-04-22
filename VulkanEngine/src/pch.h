@@ -1,8 +1,7 @@
 #pragma once
 
-#define GLFW_INCLUDE_VULKAN
-
 #include <cmath>
+#include <cstdlib>
 #include <math.h>
 #include <iostream>
 #include <fstream>
@@ -15,11 +14,14 @@
 #include <iterator>
 #include <fstream>
 #include <random>
+#include <optional>
 
+#define GLFW_INCLUDE_VULKAN
+#include <GLFW/glfw3.h>
 #include <vulkan/vulkan.h>
 
-#include <GLFW/glfw3.h>
-
+#define GLM_FORCE_RADIANS
+#define GLM_FORCE_DEPTH_ZERO_TO_ONE
 #include <glm/glm.hpp>
 #include <glm/common.hpp>
 #include <glm/gtx/norm.hpp>

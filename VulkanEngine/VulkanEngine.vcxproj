@@ -115,7 +115,7 @@
       <AdditionalIncludeDirectories>C:\VulkanSDK\1.2.131.2\Include;$(SolutionDir)Dependencies\GLFW\include;$(SolutionDir)Dependencies\GLM\include;$(SolutionDir)VulkanEngine\src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <PrecompiledHeader>Use</PrecompiledHeader>
-      <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
+      <PrecompiledHeaderFile>arcpch.h</PrecompiledHeaderFile>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -156,7 +156,7 @@
       <AdditionalIncludeDirectories>C:\VulkanSDK\1.2.131.2\Include;$(SolutionDir)Dependencies\GLFW\include;$(SolutionDir)Dependencies\GLM\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <PrecompiledHeader>Use</PrecompiledHeader>
-      <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
+      <PrecompiledHeaderFile>arcpch.h</PrecompiledHeaderFile>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -169,32 +169,33 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="src\Core\FileUtils.cpp" />
-    <ClCompile Include="src\Application.cpp" />
+    <ClCompile Include="src\Core\Application.cpp" />
     <ClCompile Include="src\main.cpp" />
-    <ClCompile Include="src\pch.cpp">
+    <ClCompile Include="src\arcpch.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">pch.h</PrecompiledHeaderFile>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">pch.h</PrecompiledHeaderFile>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
-      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">pch.h</PrecompiledHeaderFile>
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">arcpch.h</PrecompiledHeaderFile>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
-      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Release|x64'">pch.h</PrecompiledHeaderFile>
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Release|x64'">arcpch.h</PrecompiledHeaderFile>
     </ClCompile>
     <ClCompile Include="src\Renderer\VulkanAPI.cpp" />
     <ClCompile Include="src\Renderer\Shader.cpp" />
-    <ClCompile Include="src\Window.cpp" />
+    <ClCompile Include="src\Core\Window.cpp" />
     <ClCompile Include="src\Core\Timer.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\Core\Singleton.h" />
     <ClInclude Include="src\Core\FileUtils.h" />
-    <ClInclude Include="src\Application.h" />
+    <ClInclude Include="src\Core\Application.h" />
     <ClInclude Include="src\Defs.h" />
-    <ClInclude Include="src\pch.h" />
+    <ClInclude Include="src\Events\Event.h" />
+    <ClInclude Include="src\arcpch.h" />
     <ClInclude Include="src\Renderer\VulkanAPI.h" />
     <ClInclude Include="src\Renderer\Shader.h" />
-    <ClInclude Include="src\Window.h" />
+    <ClInclude Include="src\Core\Window.h" />
     <ClInclude Include="src\Core\Timer.h" />
   </ItemGroup>
   <ItemGroup>

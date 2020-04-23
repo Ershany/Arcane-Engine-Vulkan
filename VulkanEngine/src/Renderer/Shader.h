@@ -3,7 +3,7 @@
 class Shader
 {
 public:
-	Shader(const std::string &vertBinary, const std::string &fragBinary);
+	Shader(const std::string &vertBinaryPath, const std::string &fragBinaryPath);
 	~Shader();
 
 	void Enable() const;

@@ -1,4 +1,4 @@
-#include "pch.h"
+#include "arcpch.h"
 #include "Window.h"
 
 Window::Window(const char *title, int width, int height) : m_Title(title), m_Width(width), m_Height(height)
@@ -28,12 +28,12 @@ void Window::Update()
 	glfwPollEvents();
 }
 
-VkResult Window::CreateVulkanWindowSurface(VkInstance &instance, VkAllocationCallbacks *allocator, VkSurfaceKHR *surface)
+VkResult Window::CreateVulkanWindowSurface(VkInstance &instance, VkAllocationCallbacks *allocator, VkSurfaceKHR *surface) const
 {
 	return glfwCreateWindowSurface(instance, m_Window, nullptr, surface);
 }
 
-const char** Window::GetExtensions(uint32_t *outExtensionCount)
+const char** Window::GetExtensions(uint32_t *outExtensionCount) const
 {
 	return glfwGetRequiredInstanceExtensions(outExtensionCount);
 }

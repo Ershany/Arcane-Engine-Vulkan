@@ -1,9 +1,9 @@
-#include "pch.h"
+#include "arcpch.h"
 #include "Shader.h"
 
 #include "Core/FileUtils.h"
 
-Shader::Shader(const std::string &vertBinary, const std::string &fragBinary)
+Shader::Shader(const std::string &vertBinaryPath, const std::string &fragBinaryPath)
 {
 	std::string vertShaderCode = FileUtils::ReadFile("res/Shaders/simple_vert.spv");
 	std::string fragShaderCode = FileUtils::ReadFile("res/Shaders/simple_frag.spv");

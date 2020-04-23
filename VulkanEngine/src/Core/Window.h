@@ -8,11 +8,11 @@ public:
 
 	void Init();
 	void Update();
-	VkResult CreateVulkanWindowSurface(VkInstance &instance, VkAllocationCallbacks *allocator, VkSurfaceKHR *surface);
+	VkResult CreateVulkanWindowSurface(VkInstance &instance, VkAllocationCallbacks *allocator, VkSurfaceKHR *surface) const;
 
-	inline int GetWidth() { return m_Width; }
-	inline int GetHeight() { return m_Height; }
-	const char** GetExtensions(uint32_t *outExtensionCount);
+	inline int GetWidth() const { return m_Width; }
+	inline int GetHeight() const { return m_Height; }
+	const char** GetExtensions(uint32_t *outExtensionCount) const;
 	inline bool ShouldClose() const { return glfwWindowShouldClose(m_Window); }
 private:
 	const char *m_Title;

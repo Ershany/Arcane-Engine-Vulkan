@@ -1,6 +1,6 @@
-#include "pch.h"
+#include "arcpch.h"
 
-#include "Application.h"
+#include "Core/Application.h"
 
 int main()
 {

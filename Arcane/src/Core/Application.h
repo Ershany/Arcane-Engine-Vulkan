@@ -21,4 +21,7 @@ namespace Arcane
 
 		VulkanAPI m_Vulkan;
 	};
+
+	// Needs to be defined by the game client
+	Application* CreateApplication();
 }

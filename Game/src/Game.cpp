@@ -1,22 +1,13 @@
 #include <Arcane.h>
 
-/*
 class Game : public Arcane::Application
 {
 public:
-	Game();
-	~Game();
+	Game() {}
+	~Game() {}
 };
 
-int main()
+Arcane::Application* Arcane::CreateApplication()
 {
-	Game *game = new Game();
-	game->Run();
-	delete game;
-}
-*/
-
-int main()
-{
-
+	return new Game();
 }

@@ -15,7 +15,7 @@
     <ProjectGuid>{4404336D-72D4-41E3-B395-B72B82A74F49}</ProjectGuid>
     <RootNamespace>Arcane</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
-	<ProjectName>Arcane</ProjectName>
+    <ProjectName>Arcane</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
@@ -100,7 +100,6 @@
   <ItemGroup>
     <ClCompile Include="src\Core\FileUtils.cpp" />
     <ClCompile Include="src\Core\Application.cpp" />
-    <ClCompile Include="src\main.cpp" />
     <ClCompile Include="src\arcpch.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
       <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">arcpch.h</PrecompiledHeaderFile>
@@ -119,6 +118,7 @@
     <ClInclude Include="src\Core\FileUtils.h" />
     <ClInclude Include="src\Core\Application.h" />
     <ClInclude Include="src\Defs.h" />
+    <ClInclude Include="src\EntryPoint.h" />
     <ClInclude Include="src\Events\Event.h" />
     <ClInclude Include="src\arcpch.h" />
     <ClInclude Include="src\Renderer\VulkanAPI.h" />

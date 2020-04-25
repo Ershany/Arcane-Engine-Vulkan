@@ -1,9 +1,9 @@
 #pragma once
 
+#include "Core/Window.h"
+
 namespace Arcane
 {
-	class Window;
-
 	struct DeviceQueueIndices
 	{
 		std::optional<uint32_t> graphicsQueue;

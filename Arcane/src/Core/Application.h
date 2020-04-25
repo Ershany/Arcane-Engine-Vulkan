@@ -3,6 +3,7 @@
 #include "Window.h"
 #include "Renderer/VulkanAPI.h"
 #include "Core/Core.h"
+#include "Defs.h"
 
 namespace Arcane
 {
@@ -18,10 +19,6 @@ namespace Arcane
 		void Cleanup();
 	private:
 		Window m_Window;
-
 		VulkanAPI m_Vulkan;
 	};
-
-	// Needs to be defined by the game client
-	Application* CreateApplication();
 }

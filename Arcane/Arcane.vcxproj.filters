@@ -74,7 +74,7 @@
     <ClInclude Include="src\Arcane.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\EntryPoint.h">
+    <ClInclude Include="src\EntryPoint.cpp">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

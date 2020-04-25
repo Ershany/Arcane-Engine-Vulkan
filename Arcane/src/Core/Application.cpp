@@ -7,9 +7,7 @@ namespace Arcane
 {
 	Application::Application()
 		: m_Window("Arcane Engine - Vulkan RT Support", 1280, 720), m_Vulkan(&m_Window)
-	{
-
-	}
+	{}
 
 	Application::~Application()
 	{
@@ -19,7 +17,6 @@ namespace Arcane
 	void Application::Run()
 	{
 		m_Vulkan.InitVulkan();
-
 		Loop();
 	}
 
@@ -32,7 +29,5 @@ namespace Arcane
 	}
 
 	void Application::Cleanup()
-	{
-
-	}
+	{}
 }

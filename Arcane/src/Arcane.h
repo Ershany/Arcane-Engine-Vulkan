@@ -6,5 +6,4 @@
 	Then EntryPoint can call the client defined function and we can startup the engine
 */
 
-#include "Core/Application.h"
-#include "EntryPoint.h"
+#include "EntryPoint.cpp"

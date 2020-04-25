@@ -1,4 +1,4 @@
-#include <Arcane.h>
+#include "Arcane.h"
 
 class Game : public Arcane::Application
 {
@@ -9,5 +9,6 @@ public:
 
 Arcane::Application* Arcane::CreateApplication()
 {
+	std::cout << "in GAME" << std::endl;
 	return new Game();
 }

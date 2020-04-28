@@ -279,8 +279,8 @@ namespace Arcane
 
 	void VulkanAPI::CreateGraphicsPipeline()
 	{
-		auto vertShaderCode = FileUtils::ReadFile("res/Shaders/simple_vert.spv");
-		auto fragShaderCode = FileUtils::ReadFile("res/Shaders/simple_frag.spv");
+		//auto vertShaderCode = FileUtils::ReadFile("res/Shaders/simple_vert.spv");
+		//auto fragShaderCode = FileUtils::ReadFile("res/Shaders/simple_frag.spv");
 	}
 
 	void VulkanAPI::CreateFramebuffers()

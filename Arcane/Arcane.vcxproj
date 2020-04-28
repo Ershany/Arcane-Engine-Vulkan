@@ -63,7 +63,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>ARC_PLATFORM_WINDOWS;ARC_DEBUG;ARC_BUILD_DLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(SolutionDir)Dependencies\VulkanSDK\1.2.131.2\Include;$(SolutionDir)Dependencies\GLFW\include;$(SolutionDir)Dependencies\GLM\include;$(SolutionDir)Arcane\src</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)Dependencies\VulkanSDK\1.2.131.2\Include;$(SolutionDir)Dependencies\GLFW\include;$(SolutionDir)Dependencies\GLM\include;$(SolutionDir)Arcane\src;$(SolutionDir)Dependencies\spdlog\include</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpplatest</LanguageStandard>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>arcpch.h</PrecompiledHeaderFile>
@@ -84,7 +84,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>ARC_PLATFORM_WINDOWS;ARC_RELEASE;ARC_BUILD_DLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(SolutionDir)Dependencies\VulkanSDK\1.2.131.2\Include;$(SolutionDir)Dependencies\GLFW\include;$(SolutionDir)Dependencies\GLM\include;$(SolutionDir)Arcane\src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)Dependencies\VulkanSDK\1.2.131.2\Include;$(SolutionDir)Dependencies\GLFW\include;$(SolutionDir)Dependencies\GLM\include;$(SolutionDir)Arcane\src;$(SolutionDir)Dependencies\spdlog\include</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpplatest</LanguageStandard>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>arcpch.h</PrecompiledHeaderFile>
@@ -99,6 +99,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="src\Core\Logger.cpp" />
     <ClCompile Include="src\Core\FileUtils.cpp" />
     <ClCompile Include="src\Core\Application.cpp" />
     <ClCompile Include="src\arcpch.cpp">
@@ -113,13 +114,14 @@
     <ClCompile Include="src\Core\Timer.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="src\Core\Logger.h" />
     <ClInclude Include="src\Arcane.h" />
     <ClInclude Include="src\Core\Core.h" />
     <ClInclude Include="src\Core\Singleton.h" />
     <ClInclude Include="src\Core\FileUtils.h" />
     <ClInclude Include="src\Core\Application.h" />
     <ClInclude Include="src\Defs.h" />
-    <ClInclude Include="src\EntryPoint.cpp" />
+    <ClInclude Include="src\EntryPoint.h" />
     <ClInclude Include="src\Events\Event.h" />
     <ClInclude Include="src\arcpch.h" />
     <ClInclude Include="src\Renderer\VulkanAPI.h" />

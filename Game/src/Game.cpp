@@ -9,6 +9,6 @@ public:
 
 Arcane::Application* Arcane::CreateApplication()
 {
-	std::cout << "in GAME" << std::endl;
+	ARC_GAME_FATAL("AHH");
 	return new Game();
 }

@@ -1,4 +1,4 @@
-#include "Arcane.h"
+#include <Arcane.h>
 
 class Game : public Arcane::Application
 {

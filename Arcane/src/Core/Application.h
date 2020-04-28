@@ -19,6 +19,7 @@ namespace Arcane
 		void Cleanup();
 	private:
 		Window m_Window;
+
 		VulkanAPI m_Vulkan;
 	};
 }

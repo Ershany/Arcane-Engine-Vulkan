@@ -7,7 +7,6 @@
 #else
 	#define DISABLE_DLL_WARNING
 #endif
-
 DISABLE_DLL_WARNING
 
 // TODO: This should be moved to renderer class, for now this will do

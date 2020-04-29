@@ -50,7 +50,6 @@ namespace Arcane
 		bool Handled = false; // This will allow certain layers to handle the event and stop the event from further propagating
 	};
 
-	/*
 	class EventDispatcher
 	{
 		template<typename T>
@@ -63,7 +62,7 @@ namespace Arcane
 		{
 			if (m_Event.GetEventType() == T::GetStaticType())
 			{
-				m_Event.m_Handled = func(*(T*)&m_Event);
+				m_Event.Handled = func(*(T*)&m_Event);
 				return true;
 			}
 			return false;
@@ -71,9 +70,8 @@ namespace Arcane
 	private:
 		Event &m_Event;
 	};
-	*/
 
-	inline std::ostream& operator<<(std::ostream &os, const Event &e)
+	inline std::ostream& operator<<(std::ostream &os, const Arcane::Event &e)
 	{
 		return os << e.ToString();
 	}

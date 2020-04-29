@@ -3,7 +3,7 @@
 
 #include "Core/FileUtils.h"
 #include "Core/Logger.h"
-//#include "Events/ApplicationEvent.h"
+#include "Events/ApplicationEvent.h"
 
 namespace Arcane
 {
@@ -20,8 +20,8 @@ namespace Arcane
 
 	void Application::Run()
 	{
-		//WindowResizeEvent e(1280, 720);
-		//ARC_ENGINE_TRACE(e.ToString());
+		WindowResizeEvent e(1280, 720);
+		ARC_ENGINE_TRACE(e.ToString());
 
 		m_Vulkan.InitVulkan();
 

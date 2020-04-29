@@ -4,6 +4,7 @@
 #include "Renderer/VulkanAPI.h"
 #include "Core/Core.h"
 #include "Defs.h"
+#include "Events/Event.h"
 
 namespace Arcane
 {

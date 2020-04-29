@@ -9,6 +9,5 @@ public:
 
 Arcane::Application* Arcane::CreateApplication()
 {
-	ARC_GAME_FATAL("AHH");
 	return new Game();
 }

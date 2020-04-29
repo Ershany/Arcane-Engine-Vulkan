@@ -21,7 +21,7 @@ namespace Arcane
 	void Application::Run()
 	{
 		WindowResizeEvent e(1280, 720);
-		ARC_ENGINE_TRACE(e.ToString());
+		ARC_ENGINE_TRACE(e);
 
 		m_Vulkan.InitVulkan();
 

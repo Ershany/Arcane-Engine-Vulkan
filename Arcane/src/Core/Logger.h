@@ -3,6 +3,7 @@
 #include "Core/Core.h"
 #include "Core/Singleton.h"
 #include "spdlog/spdlog.h"
+#include "spdlog/fmt/ostr.h"
 
 namespace Arcane
 {

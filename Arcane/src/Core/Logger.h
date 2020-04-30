@@ -7,7 +7,7 @@
 
 namespace Arcane
 {
-	class ARCANE_API Logger : public Singleton
+	class Logger : public Singleton
 	{
 	private:
 		Logger();

@@ -1,4 +1,4 @@
-#include <Arcane.h>
+#include "Core/Application.h"
 
 class Game : public Arcane::Application
 {
@@ -7,7 +7,7 @@ public:
 	~Game() {}
 };
 
-Arcane::Application* Arcane::CreateApplication()
+int main()
 {
-	return new Game();
+	return 0;
 }

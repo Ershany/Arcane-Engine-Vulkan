@@ -8,7 +8,7 @@
 
 namespace Arcane
 {
-	class ARCANE_API Application
+	class Application
 	{
 	public:
 		Application();

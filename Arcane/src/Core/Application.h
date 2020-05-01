@@ -2,13 +2,12 @@
 
 #include "Window.h"
 #include "Renderer/VulkanAPI.h"
-#include "Core/Core.h"
 #include "Defs.h"
 #include "Events/Event.h"
 
 namespace Arcane
 {
-	class ARCANE_API Application
+	class Application
 	{
 	public:
 		Application();

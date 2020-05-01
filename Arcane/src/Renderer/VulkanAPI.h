@@ -96,7 +96,7 @@ namespace Arcane
 			"VK_LAYER_KHRONOS_validation"
 		};
 		VkDebugUtilsMessengerEXT m_DebugMessenger;
-#ifdef _DEBUG
+#ifdef ARC_DEBUG
 		bool const m_EnableValidationLayers = true;
 #else
 		bool const m_EnableValidationLayers = false;

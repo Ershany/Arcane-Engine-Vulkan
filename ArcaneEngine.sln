@@ -3,8 +3,6 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 16
 VisualStudioVersion = 16.0.29613.14
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Game", "Game\Game.vcxproj", "{75AF7E2C-AAE4-40E8-9BD9-26A49E0CEE92}"
-EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Arcane", "Arcane\Arcane.vcxproj", "{4404336D-72D4-41E3-B395-B72B82A74F49}"
 EndProject
 Global
@@ -14,12 +12,6 @@ Global
 		Release|x64 = Release|x64
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{75AF7E2C-AAE4-40E8-9BD9-26A49E0CEE92}.Debug|x64.ActiveCfg = Debug|x64
-		{75AF7E2C-AAE4-40E8-9BD9-26A49E0CEE92}.Debug|x64.Build.0 = Debug|x64
-		{75AF7E2C-AAE4-40E8-9BD9-26A49E0CEE92}.Final|x64.ActiveCfg = Final|x64
-		{75AF7E2C-AAE4-40E8-9BD9-26A49E0CEE92}.Final|x64.Build.0 = Final|x64
-		{75AF7E2C-AAE4-40E8-9BD9-26A49E0CEE92}.Release|x64.ActiveCfg = Release|x64
-		{75AF7E2C-AAE4-40E8-9BD9-26A49E0CEE92}.Release|x64.Build.0 = Release|x64
 		{4404336D-72D4-41E3-B395-B72B82A74F49}.Debug|x64.ActiveCfg = Debug|x64
 		{4404336D-72D4-41E3-B395-B72B82A74F49}.Debug|x64.Build.0 = Debug|x64
 		{4404336D-72D4-41E3-B395-B72B82A74F49}.Final|x64.ActiveCfg = Final|x64

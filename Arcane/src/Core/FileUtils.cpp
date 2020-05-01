@@ -17,7 +17,7 @@ namespace Arcane
 		}
 		else
 		{
-			throw std::runtime_error("Could not read file path");
+			ARC_LOG_ERROR("Could not read file path {0}", filepath);
 		}
 
 		return result;

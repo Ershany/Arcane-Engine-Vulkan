@@ -23,21 +23,21 @@
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
-    <ConfigurationType>DynamicLibrary</ConfigurationType>
-    <UseDebugLibraries>false</UseDebugLibraries>
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
     <PlatformToolset>v142</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
-    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <WholeProgramOptimization>false</WholeProgramOptimization>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
-    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
     <PlatformToolset>v142</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Final|x64'" Label="Configuration">
-    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
     <PlatformToolset>v142</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
@@ -86,7 +86,7 @@
       <PreprocessorDefinitions>ARC_PLATFORM_WINDOWS;ARC_DEBUG;ARC_BUILD_DLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <AdditionalIncludeDirectories>$(SolutionDir)Dependencies\VulkanSDK\1.2.131.2\Include;$(SolutionDir)Dependencies\GLFW\include;$(SolutionDir)Dependencies\GLM\include;$(SolutionDir)Arcane\src;$(SolutionDir)Dependencies\spdlog\include</AdditionalIncludeDirectories>
-      <LanguageStandard>stdcpplatest</LanguageStandard>
+      <LanguageStandard>stdcpp17</LanguageStandard>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>arcpch.h</PrecompiledHeaderFile>
       <DisableSpecificWarnings>
@@ -116,7 +116,7 @@
       <PreprocessorDefinitions>ARC_PLATFORM_WINDOWS;ARC_RELEASE;ARC_BUILD_DLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <AdditionalIncludeDirectories>$(SolutionDir)Dependencies\VulkanSDK\1.2.131.2\Include;$(SolutionDir)Dependencies\GLFW\include;$(SolutionDir)Dependencies\GLM\include;$(SolutionDir)Arcane\src;$(SolutionDir)Dependencies\spdlog\include</AdditionalIncludeDirectories>
-      <LanguageStandard>stdcpplatest</LanguageStandard>
+      <LanguageStandard>stdcpp17</LanguageStandard>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>arcpch.h</PrecompiledHeaderFile>
     </ClCompile>
@@ -138,7 +138,7 @@
       <PreprocessorDefinitions>ARC_PLATFORM_WINDOWS;ARC_FINAL;ARC_BUILD_DLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <AdditionalIncludeDirectories>$(SolutionDir)Dependencies\VulkanSDK\1.2.131.2\Include;$(SolutionDir)Dependencies\GLFW\include;$(SolutionDir)Dependencies\GLM\include;$(SolutionDir)Arcane\src;$(SolutionDir)Dependencies\spdlog\include</AdditionalIncludeDirectories>
-      <LanguageStandard>stdcpplatest</LanguageStandard>
+      <LanguageStandard>stdcpp17</LanguageStandard>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>arcpch.h</PrecompiledHeaderFile>
     </ClCompile>
@@ -152,6 +152,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="main.cpp" />
     <ClCompile Include="src\Core\Logger.cpp" />
     <ClCompile Include="src\Core\FileUtils.cpp" />
     <ClCompile Include="src\Core\Application.cpp" />
@@ -170,13 +171,11 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\Core\Logger.h" />
-    <ClInclude Include="src\Arcane.h" />
     <ClInclude Include="src\Core\Core.h" />
     <ClInclude Include="src\Core\Singleton.h" />
     <ClInclude Include="src\Core\FileUtils.h" />
     <ClInclude Include="src\Core\Application.h" />
     <ClInclude Include="src\Defs.h" />
-    <ClInclude Include="src\EntryPoint.h" />
     <ClInclude Include="src\Events\Event.h" />
     <ClInclude Include="src\arcpch.h" />
     <ClInclude Include="src\Events\ApplicationEvent.h" />

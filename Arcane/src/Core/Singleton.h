@@ -2,7 +2,7 @@
 
 namespace Arcane
 {
-	class ARCANE_API Singleton
+	class Singleton
 	{
 	public:
 		Singleton(const Singleton &singleton) = delete;  // Get rid of copy ctor

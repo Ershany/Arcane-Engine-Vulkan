@@ -58,11 +58,6 @@ namespace Arcane
 
 	void VulkanAPI::CreateInstance()
 	{
-		if (m_EnableValidationLayers && !CheckValidationLayerSupport())
-		{
-			throw std::runtime_error("Validation Layers Requested, But Not Available");
-		}
-
 		auto extensions = GetRequiredExtensions();
 
 		VkApplicationInfo appInfo = {};
@@ -82,6 +77,8 @@ namespace Arcane
 		VkDebugUtilsMessengerCreateInfoEXT debugCreateInfo; // Needs to be out of scope so it isn't destroyed until vkCreateInstance gets called
 		if (m_EnableValidationLayers)
 		{
+			ARC_ASSERT(CheckValidationLayerSupport(), "Validation Layers requested but not available");
+
 			createInfo.enabledLayerCount = static_cast<uint32_t>(m_ValidationLayers.size());
 			createInfo.ppEnabledLayerNames = m_ValidationLayers.data();
 
@@ -95,27 +92,20 @@ namespace Arcane
 		}
 
 		VkResult result = vkCreateInstance(&createInfo, nullptr, &m_Instance);
-		if (result != VK_SUCCESS)
-		{
-			throw std::runtime_error("Failed to create Vulkan Instance");
-		}
+		ARC_ASSERT(result == VK_SUCCESS, "Failed to create Vulkan Instance");
 	}
 
 	void VulkanAPI::CreateSurface()
 	{
 		VkResult result = m_Window->CreateVulkanWindowSurface(m_Instance, nullptr, &m_Surface);
-		if (result != VK_SUCCESS)
-		{
-			throw std::runtime_error("Failed to create Vulkan Window Surface");
-		}
+		ARC_ASSERT(result == VK_SUCCESS, "Failed to create Vulkan Window Surface");
 	}
 
 	void VulkanAPI::SelectPhysicalDevice()
 	{
 		uint32_t deviceCount = 0;
 		vkEnumeratePhysicalDevices(m_Instance, &deviceCount, nullptr);
-		if (deviceCount == 0)
-			throw std::runtime_error("Failed to find GPUs with Vulkan support");
+		ARC_ASSERT(deviceCount > 0, "Failed to find GPUs with Vulkan Support");
 
 		std::vector<VkPhysicalDevice> physicalDevices(deviceCount);
 		vkEnumeratePhysicalDevices(m_Instance, &deviceCount, physicalDevices.data());
@@ -134,8 +124,7 @@ namespace Arcane
 		if (bestDeviceScore > -1)
 			m_PhysicalDevice = *bestDevice;
 
-		if (m_PhysicalDevice == VK_NULL_HANDLE)
-			throw std::runtime_error("Failed to find a suitable GPU that supports the extensions required");
+		ARC_ASSERT(m_PhysicalDevice != VK_NULL_HANDLE, "Failed to find a suitable GPU that supports the extensions required");
 	}
 
 	void VulkanAPI::CreateLogicalDeviceAndQueues()
@@ -173,10 +162,7 @@ namespace Arcane
 		}
 
 		VkResult result = vkCreateDevice(m_PhysicalDevice, &deviceCreateInfo, nullptr, &m_Device);
-		if (result != VK_SUCCESS)
-		{
-			throw std::runtime_error("Failed to create logical device");
-		}
+		ARC_ASSERT(result == VK_SUCCESS, "Failed to create logical device");
 
 		vkGetDeviceQueue(m_Device, indices.graphicsQueue.value(), 0, &m_GraphicsQueue);
 		vkGetDeviceQueue(m_Device, indices.computeQueue.value(), 0, &m_ComputeQueue);
@@ -200,8 +186,8 @@ namespace Arcane
 		case SwapchainPresentMode::VSYNC_TRIPLE_BUFFER: swapchainImageCount = 3u; break;
 		case SwapchainPresentMode::VSYNC_DOUBLE_BUFFER: swapchainImageCount = 2u; break;
 		}
-		// TODO: Can log a warning if this value ends up being out of bounds
 		swapchainImageCount = std::clamp(swapchainImageCount, swapchainDetails.capabilities.minImageCount, swapchainDetails.capabilities.maxImageCount);
+		ARC_LOG_INFO("Swapchain buffer count: {0}", swapchainImageCount);
 
 		VkSwapchainCreateInfoKHR createInfo = {};
 		createInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
@@ -237,10 +223,7 @@ namespace Arcane
 		createInfo.oldSwapchain = VK_NULL_HANDLE;
 
 		VkResult result = vkCreateSwapchainKHR(m_Device, &createInfo, nullptr, &m_Swapchain);
-		if (result != VK_SUCCESS)
-		{
-			throw std::runtime_error("Failed to create Vulkan's swapchain");
-		}
+		ARC_ASSERT(result == VK_SUCCESS, "Failed to create Vulkan's swapchain");
 
 		uint32_t imageCount;
 		vkGetSwapchainImagesKHR(m_Device, m_Swapchain, &imageCount, nullptr);
@@ -270,10 +253,7 @@ namespace Arcane
 			createInfo.subresourceRange.layerCount = 1;
 
 			VkResult result = vkCreateImageView(m_Device, &createInfo, nullptr, &m_SwapchainImageViews[i]);
-			if (result != VK_SUCCESS)
-			{
-				throw std::runtime_error("Failed to create image views for the swap chain images");
-			}
+			ARC_ASSERT(result == VK_SUCCESS, "Failed to create image views for the swap chain images");
 		}
 	}
 
@@ -304,10 +284,7 @@ namespace Arcane
 			framebufferInfo.layers = 1;
 
 			VkResult result = vkCreateFramebuffer(m_Device, &framebufferInfo, nullptr, &m_SwapchainFramebuffers[i]);
-			if (result != VK_SUCCESS)
-			{
-				throw std::runtime_error("Failed to create render pass with swapchain image views");
-			}
+			ARC_ASSERT(result == VK_SUCCESS, "Failed to create render pass with swapchain image views");
 		}
 	}
 
@@ -444,13 +421,14 @@ namespace Arcane
 	{
 		for (size_t i = 0; i < availableFormats.size(); i++)
 		{
-			if (availableFormats[i].format == VK_FORMAT_B8G8R8_SRGB && availableFormats[i].colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR)
+			if (availableFormats[i].format == VK_FORMAT_B8G8R8A8_SRGB && availableFormats[i].colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR)
+			{
 				return availableFormats[i];
+			}
 		}
 
-		// TODO: Log that an incorrect format was chosen for the swapchain
-		// TODO: Instead, rank the available formats and choose the best one and log info on the type that was chosen
-		// TODO: Still log a warning if the types we want were not available
+		// TODO: Instead rank the available formats and choose the best one and log warn on the type that was chosen
+		ARC_LOG_WARN("Ideal Swapchain Format Unavailable");
 		return availableFormats[0];
 	}
 
@@ -464,7 +442,6 @@ namespace Arcane
 		case SwapchainPresentMode::VSYNC_TRIPLE_BUFFER: desiredPresentMode = VK_PRESENT_MODE_MAILBOX_KHR; break;
 		}
 
-		// TODO: Change the desired mode based on settings
 		for (size_t i = 0; i < availablePresentModes.size(); i++)
 		{
 			if (availablePresentModes[i] == desiredPresentMode)

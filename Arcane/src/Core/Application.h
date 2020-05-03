@@ -1,10 +1,10 @@
 #pragma once
 
-#include "Window.h"
-#include "Renderer/VulkanAPI.h"
 #include "Core/Core.h"
 #include "Defs.h"
 #include "Events/Event.h"
+#include "Core/Window.h"
+#include "Renderer/VulkanAPI.h"
 
 namespace Arcane
 {
@@ -12,7 +12,7 @@ namespace Arcane
 	{
 	public:
 		Application();
-		virtual  ~Application();
+		virtual ~Application();
 
 		void Run();
 	private:

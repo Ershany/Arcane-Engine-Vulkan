@@ -86,9 +86,17 @@
     <ClInclude Include="src\Events\MouseEvent.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="src\Arcane.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="res\Shaders\simple.vert" />
     <None Include="res\Shaders\simple.frag" />
+  </ItemGroup>
+  <ItemGroup>
+    <Library Include="..\Dependencies\GLFW\lib-vc2019\glfw3.lib" />
+    <Library Include="..\Dependencies\VulkanSDK\1.2.131.2\Lib\vulkan-1.lib" />
+    <Library Include="..\Dependencies\GLM\lib\glm_static-x64.lib" />
   </ItemGroup>
 </Project>

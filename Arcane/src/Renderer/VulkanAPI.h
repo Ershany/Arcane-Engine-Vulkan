@@ -9,7 +9,6 @@ namespace Arcane
 		std::optional<uint32_t> graphicsQueue;
 		std::optional<uint32_t> computeQueue;
 		std::optional<uint32_t> copyQueue;
-
 		std::optional<uint32_t> presentQueue;
 
 		bool IsSuitable()
@@ -28,7 +27,7 @@ namespace Arcane
 	class VulkanAPI
 	{
 	public:
-		VulkanAPI(const Window *const window);
+		VulkanAPI(const Window* window);
 		~VulkanAPI();
 
 		void InitVulkan();
@@ -70,6 +69,7 @@ namespace Arcane
 			VkAllocationCallbacks *allocator,
 			VkDebugUtilsMessengerEXT *debugMessenger);
 		static void DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT debugMessenger, const VkAllocationCallbacks *allocator);
+
 	private:
 		const Window *const m_Window;
 		VkInstance m_Instance;

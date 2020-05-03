@@ -27,5 +27,5 @@
 #include <glm/gtc/type_ptr.hpp>
 
 #include <vulkan/vulkan.h>
-#include <GLFW/glfw3.h>
-
+#include <windows.h>
+#include <glfw/glfw3.h>

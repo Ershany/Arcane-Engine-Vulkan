@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Core/Window.h"
+#include "Renderer/Shader.h"
 
 namespace Arcane
 {
@@ -43,6 +44,7 @@ namespace Arcane
 		void CreateLogicalDeviceAndQueues();
 		void CreateSwapchain();
 		void CreateSwapchainImageViews();
+		void CreateRenderPass();
 		void CreateGraphicsPipeline();
 		void CreateFramebuffers();
 
@@ -88,6 +90,12 @@ namespace Arcane
 		VkQueue m_ComputeQueue;
 		VkQueue m_CopyQueue;
 		VkQueue m_PresentQueue;
+
+		// Temp Stuff
+		VkPipeline m_GraphicsPipeline;
+		Shader *m_Shader;
+		VkRenderPass m_RenderPass;
+		VkPipelineLayout m_PipelineLayout;
 
 		const std::vector<const char*> m_RequiredExtensions = {
 			VK_KHR_SWAPCHAIN_EXTENSION_NAME

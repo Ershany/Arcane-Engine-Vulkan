@@ -27,8 +27,9 @@ namespace Arcane
 		CreateLogicalDeviceAndQueues();
 		CreateSwapchain();
 		CreateSwapchainImageViews();
+		CreateRenderPass();
 		CreateGraphicsPipeline();
-		CreateFramebuffers();
+		//CreateFramebuffers();
 	}
 
 	void VulkanAPI::CreateShader(const std::string & vertBinaryPath, const std::string & fragBinaryPath)
@@ -38,6 +39,11 @@ namespace Arcane
 
 	void VulkanAPI::Cleanup()
 	{
+		vkDestroyPipeline(m_Device, m_GraphicsPipeline, nullptr);
+		vkDestroyPipelineLayout(m_Device, m_PipelineLayout, nullptr);
+
+		vkDestroyRenderPass(m_Device, m_RenderPass, nullptr);
+
 		for (size_t i = 0; i < m_SwapchainFramebuffers.size(); i++)
 			vkDestroyFramebuffer(m_Device, m_SwapchainFramebuffers[i], nullptr);
 
@@ -257,10 +263,154 @@ namespace Arcane
 		}
 	}
 
+	void VulkanAPI::CreateRenderPass()
+	{
+		VkAttachmentDescription colourAttachment = {};
+		colourAttachment.format = m_SwapchainImageFormat;
+		colourAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
+		colourAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+		colourAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+		colourAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+		colourAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+		colourAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+		colourAttachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR; // Images to be presented in the swapchain
+
+		VkAttachmentReference colourAttachmentRef = {};
+		colourAttachmentRef.attachment = 0;
+		colourAttachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+		VkSubpassDescription subpass = {};
+		subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS; // Vulkan can support compute subpass so graphics queue needs to be specified
+		subpass.colorAttachmentCount = 1;
+		subpass.pColorAttachments = &colourAttachmentRef;
+		//subpass.pInputAttachments // Attachmesnts that are read from a shader
+		//subpass.pResolveAttachments // Attachments used for multisampling colour attachments
+		//subpass.pDepthStencilAttachments // Attachment for a depth and stencil attachment
+		//subpass.pPreserveAttachments // Attachments that are not used by this subpass, but for which the data must be preserved
+
+		VkRenderPassCreateInfo renderPassCreateInfo = {};
+		renderPassCreateInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+		renderPassCreateInfo.attachmentCount = 1;
+		renderPassCreateInfo.pAttachments = &colourAttachment;
+		renderPassCreateInfo.subpassCount = 1;
+		renderPassCreateInfo.pSubpasses = &subpass;
+
+		VkResult result = vkCreateRenderPass(m_Device, &renderPassCreateInfo, nullptr, &m_RenderPass);
+		ARC_ASSERT(result == VK_SUCCESS, "Failed to create Vulkan RenderPass");
+	}
+
 	void VulkanAPI::CreateGraphicsPipeline()
 	{
-		//auto vertShaderCode = FileUtils::ReadFile("res/Shaders/simple_vert.spv");
-		//auto fragShaderCode = FileUtils::ReadFile("res/Shaders/simple_frag.spv");
+		m_Shader = new Shader(&m_Device, "res/Shaders/simple_vert.spv", "res/Shaders/simple_frag.spv");
+
+		// TODO: When abstracted the pipeline state create infos should fill most fields, even if it is default values
+		VkPipelineVertexInputStateCreateInfo vertexInputInfo = {};
+		vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+		vertexInputInfo.vertexBindingDescriptionCount = 0;
+		vertexInputInfo.pVertexBindingDescriptions = nullptr;
+		vertexInputInfo.vertexAttributeDescriptionCount = 0;
+		vertexInputInfo.pVertexAttributeDescriptions = nullptr;
+
+		VkPipelineInputAssemblyStateCreateInfo inputAssemblyInfo = {};
+		inputAssemblyInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+		inputAssemblyInfo.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+		inputAssemblyInfo.primitiveRestartEnable = VK_FALSE;
+
+		// Viewport can be dynamic but you must create a VkDynamicState and fill it and submit that. Then at render time you must specify
+		VkViewport viewport = {};
+		viewport.x = 0.0f;
+		viewport.y = 0.0f;
+		viewport.width = static_cast<float>(m_SwapchainExtent.width);
+		viewport.height = static_cast<float>(m_SwapchainExtent.height);
+		viewport.minDepth = 0.0f;
+		viewport.maxDepth = 1.0f;
+
+		VkRect2D scissor = {};
+		scissor.offset = { 0, 0 };
+		scissor.extent = m_SwapchainExtent;
+
+		VkPipelineViewportStateCreateInfo viewportCreateInfo = {};
+		viewportCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
+		viewportCreateInfo.viewportCount = 1;
+		viewportCreateInfo.pViewports = &viewport;
+		viewportCreateInfo.scissorCount = 1;
+		viewportCreateInfo.pScissors = &scissor;
+
+		VkPipelineRasterizationStateCreateInfo rasterizationCreateInfo = {};
+		rasterizationCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+		rasterizationCreateInfo.depthClampEnable = VK_FALSE; // TODO: Might be useful for shadowmaps?
+		rasterizationCreateInfo.rasterizerDiscardEnable = VK_FALSE;
+		rasterizationCreateInfo.polygonMode = VK_POLYGON_MODE_FILL; // TODO: This is where we can do wireframe
+		rasterizationCreateInfo.lineWidth = 1.0f; // Any line thicker than 1.0 requires you to enable the wideLines GPU feature
+		rasterizationCreateInfo.cullMode = VK_CULL_MODE_BACK_BIT;
+		rasterizationCreateInfo.frontFace = VK_FRONT_FACE_CLOCKWISE;
+		rasterizationCreateInfo.depthBiasEnable = VK_FALSE;
+		rasterizationCreateInfo.depthBiasConstantFactor = 0.0f;
+		rasterizationCreateInfo.depthBiasClamp = 0.0f;
+		rasterizationCreateInfo.depthBiasSlopeFactor = 0.0f;
+
+		VkPipelineMultisampleStateCreateInfo multisampleCreateInfo = {}; // Enabling MSAA requires enabling a GPU feature as well
+		multisampleCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
+		multisampleCreateInfo.sampleShadingEnable = VK_FALSE;
+		multisampleCreateInfo.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+		multisampleCreateInfo.minSampleShading = 1.0f;
+		multisampleCreateInfo.pSampleMask = nullptr;
+		multisampleCreateInfo.alphaToCoverageEnable = VK_FALSE;
+		multisampleCreateInfo.alphaToOneEnable = VK_FALSE;
+
+		VkPipelineDepthStencilStateCreateInfo depthStencilCreateInfo = {};
+
+		VkPipelineColorBlendAttachmentState colourBlendState = {};
+		colourBlendState.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+		colourBlendState.blendEnable = VK_FALSE;
+		colourBlendState.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
+		colourBlendState.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+		colourBlendState.colorBlendOp = VK_BLEND_OP_ADD;
+		colourBlendState.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+		colourBlendState.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
+		colourBlendState.alphaBlendOp = VK_BLEND_OP_ADD;
+
+		VkPipelineColorBlendStateCreateInfo colorBlendCreateInfo = {};
+		colorBlendCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+		colorBlendCreateInfo.logicOpEnable = VK_FALSE;
+		colorBlendCreateInfo.logicOp = VK_LOGIC_OP_COPY;
+		colorBlendCreateInfo.attachmentCount = 1;
+		colorBlendCreateInfo.pAttachments = &colourBlendState;
+		colorBlendCreateInfo.blendConstants[0] = 0.0f;
+		colorBlendCreateInfo.blendConstants[1] = 0.0f;
+		colorBlendCreateInfo.blendConstants[2] = 0.0f;
+		colorBlendCreateInfo.blendConstants[3] = 0.0f;
+
+		VkPipelineLayoutCreateInfo layoutCreateInfo = {};
+		layoutCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+		layoutCreateInfo.setLayoutCount = 0;
+		layoutCreateInfo.pSetLayouts = nullptr;
+		layoutCreateInfo.pushConstantRangeCount = 0;
+		layoutCreateInfo.pPushConstantRanges = nullptr;
+
+		VkResult result = vkCreatePipelineLayout(m_Device, &layoutCreateInfo, nullptr, &m_PipelineLayout);
+		ARC_ASSERT(result == VK_SUCCESS, "Failed to create Vulkan Pipeline Layout");
+
+		VkGraphicsPipelineCreateInfo pipelineCreateInfo;
+		pipelineCreateInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+		pipelineCreateInfo.stageCount = static_cast<uint32_t>(m_Shader->GetShaderStages().size());
+		pipelineCreateInfo.pStages = m_Shader->GetShaderStages().data();
+		pipelineCreateInfo.pVertexInputState = &vertexInputInfo;
+		pipelineCreateInfo.pInputAssemblyState = &inputAssemblyInfo;
+		pipelineCreateInfo.pViewportState = &viewportCreateInfo;
+		pipelineCreateInfo.pRasterizationState = &rasterizationCreateInfo;
+		pipelineCreateInfo.pMultisampleState = &multisampleCreateInfo;
+		pipelineCreateInfo.pDepthStencilState = &depthStencilCreateInfo;
+		pipelineCreateInfo.pColorBlendState = &colorBlendCreateInfo;
+		pipelineCreateInfo.pDynamicState = nullptr;
+		pipelineCreateInfo.layout = m_PipelineLayout;
+		pipelineCreateInfo.renderPass = m_RenderPass;
+		pipelineCreateInfo.subpass = 0; // index of the subpass
+		pipelineCreateInfo.basePipelineHandle = VK_NULL_HANDLE; // Used to create a pipeline from an existing pipeline
+		pipelineCreateInfo.basePipelineIndex = -1; // Used to create a pipeline from an existing pipeline
+
+		result = vkCreateGraphicsPipelines(m_Device, VK_NULL_HANDLE, 1, &pipelineCreateInfo, nullptr, &m_GraphicsPipeline);
+		ARC_ASSERT(result == VK_SUCCESS, "Failed to create Vulkan Graphics Pipeline");
 	}
 
 	void VulkanAPI::CreateFramebuffers()

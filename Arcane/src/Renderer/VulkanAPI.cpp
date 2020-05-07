@@ -18,6 +18,55 @@ namespace Arcane
 		Cleanup();
 	}
 
+	void VulkanAPI::Render()
+	{
+		vkWaitForFences(m_Device, 1, &m_InFlightFences[m_CurrentFrame], VK_TRUE, UINT64_MAX);
+
+		uint32_t imageIndex;
+		vkAcquireNextImageKHR(m_Device, m_Swapchain, UINT64_MAX, m_ImageAvailableSemaphore[m_CurrentFrame], VK_NULL_HANDLE, &imageIndex);
+
+		// Check if a previous frame is using this image, only needed if MAX_FRAMES_IN_FLIGHT is higher than the # of swapchain images
+		if (m_ImagesInFlight[imageIndex] != VK_NULL_HANDLE)
+		{
+			vkWaitForFences(m_Device, 1, &m_ImagesInFlight[imageIndex], VK_TRUE, UINT64_MAX);
+		}
+		m_ImagesInFlight[imageIndex] = m_InFlightFences[m_CurrentFrame];
+
+		VkSemaphore waitSemaphores[] = { m_ImageAvailableSemaphore[m_CurrentFrame] };
+		VkSemaphore signalSemaphores[] = { m_RenderFinishedSemaphore[m_CurrentFrame] };
+		VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT }; // We need to wait on the semaphore at the stage where we write to the colour attachment (after pixel shader)
+
+		VkSubmitInfo submitInfo = {};
+		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+		submitInfo.waitSemaphoreCount = 1;
+		submitInfo.pWaitSemaphores = waitSemaphores;
+		submitInfo.pWaitDstStageMask = waitStages;
+		submitInfo.commandBufferCount = 1;
+		submitInfo.pCommandBuffers = &m_GraphicsCommandBuffers[imageIndex];
+		submitInfo.signalSemaphoreCount = 1;
+		submitInfo.pSignalSemaphores = signalSemaphores;
+
+		vkResetFences(m_Device, 1, &m_InFlightFences[m_CurrentFrame]);
+		VkResult result = vkQueueSubmit(m_GraphicsQueue, 1, &submitInfo, m_InFlightFences[m_CurrentFrame]);
+		ARC_ASSERT(result == VK_SUCCESS, "Failed to submit Vulkan draw command buffer");
+
+		VkSwapchainKHR swapChains[] = { m_Swapchain };
+
+		VkPresentInfoKHR presentInfo = {};
+		presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+		presentInfo.pNext = nullptr;
+		presentInfo.waitSemaphoreCount = 1;
+		presentInfo.pWaitSemaphores = signalSemaphores;
+		presentInfo.swapchainCount = 1;
+		presentInfo.pSwapchains = swapChains;
+		presentInfo.pImageIndices = &imageIndex;
+		presentInfo.pResults = nullptr;
+		
+		vkQueuePresentKHR(m_PresentQueue, &presentInfo);
+
+		m_CurrentFrame = (m_CurrentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
+	}
+
 	void VulkanAPI::InitVulkan()
 	{
 		CreateInstance();
@@ -29,16 +78,28 @@ namespace Arcane
 		CreateSwapchainImageViews();
 		CreateRenderPass();
 		CreateGraphicsPipeline();
-		//CreateFramebuffers();
+		CreateFramebuffers();
+		CreateCommandPool();
+		CreateCommandBuffers();
+		CreateSyncObjects();
 	}
 
 	void VulkanAPI::CreateShader(const std::string & vertBinaryPath, const std::string & fragBinaryPath)
 	{
-	
+		
 	}
 
 	void VulkanAPI::Cleanup()
 	{
+		for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
+		{
+			vkDestroySemaphore(m_Device, m_ImageAvailableSemaphore[i], nullptr);
+			vkDestroySemaphore(m_Device, m_RenderFinishedSemaphore[i], nullptr);
+			vkDestroyFence(m_Device, m_InFlightFences[i], nullptr);
+		}
+
+		vkDestroyCommandPool(m_Device, m_GraphicsCommandPool, nullptr);
+
 		vkDestroyPipeline(m_Device, m_GraphicsPipeline, nullptr);
 		vkDestroyPipelineLayout(m_Device, m_PipelineLayout, nullptr);
 
@@ -51,6 +112,8 @@ namespace Arcane
 			vkDestroyImageView(m_Device, m_SwapchainImageViews[i], nullptr);
 
 		vkDestroySwapchainKHR(m_Device, m_Swapchain, nullptr);
+
+		delete m_Shader;
 
 		vkDestroyDevice(m_Device, nullptr);
 
@@ -288,12 +351,27 @@ namespace Arcane
 		//subpass.pDepthStencilAttachments // Attachment for a depth and stencil attachment
 		//subpass.pPreserveAttachments // Attachments that are not used by this subpass, but for which the data must be preserved
 
+		// TODO: Vulkan has auto defined sub passes before and after your subpass. Since the render pass sets up data in a certain way before and after
+		// If you don't specify, Vulkan spec says that they must be provided implicitly
+		// However on some Android drivers there is a bug where they will not, and you need to create subpass dependencies for these two implict stages
+		// 1. SrcSubpass=VK_SUBPASS_EXTERNAL & DstSubpass=indexToYourFirstSubpass
+		// 2. SrcSubpass=indexToYourLastSubpass & DstSubpass=VK_SUBPASS_EXTERNAL
+		VkSubpassDependency dependency = {};
+		dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
+		dependency.dstSubpass = 0;
+		dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT; // We need to wait for the swapchain to finish reading before we can access it
+		dependency.srcAccessMask = 0;
+		dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT; // We need to wait on this stage and access
+		dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+
 		VkRenderPassCreateInfo renderPassCreateInfo = {};
 		renderPassCreateInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
 		renderPassCreateInfo.attachmentCount = 1;
 		renderPassCreateInfo.pAttachments = &colourAttachment;
 		renderPassCreateInfo.subpassCount = 1;
 		renderPassCreateInfo.pSubpasses = &subpass;
+		renderPassCreateInfo.dependencyCount = 1;
+		renderPassCreateInfo.pDependencies = &dependency;
 
 		VkResult result = vkCreateRenderPass(m_Device, &renderPassCreateInfo, nullptr, &m_RenderPass);
 		ARC_ASSERT(result == VK_SUCCESS, "Failed to create Vulkan RenderPass");
@@ -391,8 +469,9 @@ namespace Arcane
 		VkResult result = vkCreatePipelineLayout(m_Device, &layoutCreateInfo, nullptr, &m_PipelineLayout);
 		ARC_ASSERT(result == VK_SUCCESS, "Failed to create Vulkan Pipeline Layout");
 
-		VkGraphicsPipelineCreateInfo pipelineCreateInfo;
+		VkGraphicsPipelineCreateInfo pipelineCreateInfo = {};
 		pipelineCreateInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+		pipelineCreateInfo.pNext = nullptr;
 		pipelineCreateInfo.stageCount = static_cast<uint32_t>(m_Shader->GetShaderStages().size());
 		pipelineCreateInfo.pStages = m_Shader->GetShaderStages().data();
 		pipelineCreateInfo.pVertexInputState = &vertexInputInfo;
@@ -426,7 +505,7 @@ namespace Arcane
 
 			VkFramebufferCreateInfo framebufferInfo = {};
 			framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-			//framebufferInfo.renderPass = ;
+			framebufferInfo.renderPass = m_RenderPass;
 			framebufferInfo.attachmentCount = 1;
 			framebufferInfo.pAttachments = attachments;
 			framebufferInfo.width = m_SwapchainExtent.width;
@@ -435,6 +514,99 @@ namespace Arcane
 
 			VkResult result = vkCreateFramebuffer(m_Device, &framebufferInfo, nullptr, &m_SwapchainFramebuffers[i]);
 			ARC_ASSERT(result == VK_SUCCESS, "Failed to create render pass with swapchain image views");
+		}
+	}
+
+	void VulkanAPI::CreateCommandPool()
+	{
+		DeviceQueueIndices queueIndices = FindDeviceQueueIndices(m_PhysicalDevice);
+
+		VkCommandPoolCreateInfo commandPoolCreateInfo = {};
+		commandPoolCreateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+		commandPoolCreateInfo.pNext = nullptr;
+		commandPoolCreateInfo.queueFamilyIndex = queueIndices.graphicsQueue.value();
+		commandPoolCreateInfo.flags = 0;
+
+		VkResult result = vkCreateCommandPool(m_Device, &commandPoolCreateInfo, nullptr, &m_GraphicsCommandPool);
+		ARC_ASSERT(result == VK_SUCCESS, "Failed to create Vulkan Command Pool")
+	}
+
+	void VulkanAPI::CreateCommandBuffers()
+	{
+		m_GraphicsCommandBuffers.resize(m_SwapchainFramebuffers.size());
+
+		// Allocate commands buffers from the command pool
+		{
+			VkCommandBufferAllocateInfo allocateCreateInfo = {};
+			allocateCreateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+			allocateCreateInfo.pNext = nullptr;
+			allocateCreateInfo.commandPool = m_GraphicsCommandPool;
+			allocateCreateInfo.commandBufferCount = static_cast<uint32_t>(m_GraphicsCommandBuffers.size());
+			allocateCreateInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY; // Secondary level can be reused in primary buffers. Good for re-use
+
+			VkResult result = vkAllocateCommandBuffers(m_Device, &allocateCreateInfo, m_GraphicsCommandBuffers.data());
+			ARC_ASSERT(result == VK_SUCCESS, "Failed to allocate Vulkan command buffers");
+		}
+
+		// Record commands into the command buffers
+		// We need a command buffer, one for each framebuffer we are rendering to (which will match our swapchain buffer count)
+		for (size_t i = 0; i < m_GraphicsCommandBuffers.size(); i++)
+		{
+			VkCommandBufferBeginInfo beginInfo = {};
+			beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+			beginInfo.pNext = nullptr;
+			beginInfo.flags = 0;
+			beginInfo.pInheritanceInfo = nullptr;
+
+			VkResult result = vkBeginCommandBuffer(m_GraphicsCommandBuffers[i], &beginInfo);
+			ARC_ASSERT(result == VK_SUCCESS, "Failed to begin Vulkan command buffer recording");
+
+			VkRenderPassBeginInfo renderPassBegin = {};
+			renderPassBegin.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+			renderPassBegin.pNext = nullptr;
+			renderPassBegin.renderPass = m_RenderPass;
+			renderPassBegin.framebuffer = m_SwapchainFramebuffers[i];
+			renderPassBegin.renderArea.offset = { 0, 0 };
+			renderPassBegin.renderArea.extent = m_SwapchainExtent;
+			VkClearValue clearColour = { 0.0f, 0.0f, 1.0f, 1.0f };
+			renderPassBegin.clearValueCount = 1;
+			renderPassBegin.pClearValues = &clearColour;
+
+			vkCmdBeginRenderPass(m_GraphicsCommandBuffers[i], &renderPassBegin, VK_SUBPASS_CONTENTS_INLINE); // Need to specify if you are using secondary command buffers here
+			vkCmdBindPipeline(m_GraphicsCommandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, m_GraphicsPipeline);
+			vkCmdDraw(m_GraphicsCommandBuffers[i], 3, 1, 0, 0);
+			vkCmdEndRenderPass(m_GraphicsCommandBuffers[i]);
+			
+			result = vkEndCommandBuffer(m_GraphicsCommandBuffers[i]);
+			ARC_ASSERT(result == VK_SUCCESS, "Failed to record Vulkan command buffer");
+		}
+	}
+
+	void VulkanAPI::CreateSyncObjects()
+	{
+		m_ImageAvailableSemaphore.resize(MAX_FRAMES_IN_FLIGHT);
+		m_RenderFinishedSemaphore.resize(MAX_FRAMES_IN_FLIGHT);
+		m_InFlightFences.resize(MAX_FRAMES_IN_FLIGHT);
+		m_ImagesInFlight.resize(m_SwapchainImages.size(), VK_NULL_HANDLE);
+
+		VkSemaphoreCreateInfo sempaphoreInfo = {};
+		sempaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+		sempaphoreInfo.pNext = nullptr;
+		sempaphoreInfo.flags = 0; 
+
+		VkFenceCreateInfo fenceInfo = {};
+		fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+		fenceInfo.pNext = nullptr;
+		fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT; // Start it in a signaled state avoids hanging on vkWaitForFences call at the start of the first frame
+
+		for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
+		{
+			VkResult result = vkCreateSemaphore(m_Device, &sempaphoreInfo, nullptr, &m_ImageAvailableSemaphore[i]);
+			ARC_ASSERT(result == VK_SUCCESS, "Failed to create Vulkan semaphore");
+			result = vkCreateSemaphore(m_Device, &sempaphoreInfo, nullptr, &m_RenderFinishedSemaphore[i]);
+			ARC_ASSERT(result == VK_SUCCESS, "Failed to create Vulkan semaphore");
+			result = vkCreateFence(m_Device, &fenceInfo, nullptr, &m_InFlightFences[i]);
+			ARC_ASSERT(result == VK_SUCCESS, "Failed to create Vulkan fence");
 		}
 	}
 
@@ -658,7 +830,7 @@ namespace Arcane
 	{
 		createInfo = {};
 		createInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
-		createInfo.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
+		createInfo.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
 		createInfo.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
 		createInfo.pfnUserCallback = VulkanAPI::DebugCallback;
 		createInfo.pUserData = nullptr;
@@ -672,10 +844,7 @@ namespace Arcane
 		PopulateDebugMessengerCreateInfo(createInfo);
 
 		VkResult result = CreateDebugUtilsMessengerEXT(m_Instance, &createInfo, nullptr, &m_DebugMessenger);
-		if (result != VK_SUCCESS)
-		{
-			std::runtime_error("Failed to Setup Debug Messenger for Validation Layers");
-		}
+		ARC_ASSERT(result == VK_SUCCESS, "Failed to Setup Debug Messenger for Validation Layers");
 	}
 
 	VKAPI_ATTR VkBool32 VKAPI_CALL VulkanAPI::DebugCallback(
@@ -686,7 +855,13 @@ namespace Arcane
 	{
 		if (messageSeverity >= VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT)
 		{
-			std::cerr << "Validation Layer: " << callbackData->pMessage << std::endl;
+			switch (messageSeverity)
+			{
+			case VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT: ARC_LOG_ERROR(callbackData->pMessage); break;
+			case VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT: ARC_LOG_INFO(callbackData->pMessage); break;
+			case VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT: ARC_LOG_WARN(callbackData->pMessage); break;
+			default: ARC_LOG_ERROR(callbackData->pMessage); break;
+			}
 		}
 
 		return VK_FALSE;

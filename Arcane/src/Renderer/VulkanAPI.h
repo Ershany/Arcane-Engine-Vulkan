@@ -32,9 +32,12 @@ namespace Arcane
 		VulkanAPI(const Window *const window);
 		~VulkanAPI();
 
+		void Render();
 		void InitVulkan();
 
 		void CreateShader(const std::string &vertBinaryPath, const std::string &fragBinaryPath);
+
+		inline const VkDevice GetDevice() { return m_Device; }
 	private:
 		void Cleanup();
 
@@ -47,6 +50,9 @@ namespace Arcane
 		void CreateRenderPass();
 		void CreateGraphicsPipeline();
 		void CreateFramebuffers();
+		void CreateCommandPool();
+		void CreateCommandBuffers();
+		void CreateSyncObjects();
 
 		int ScorePhysicalDeviceSuitability(const VkPhysicalDevice &device);
 		bool CheckPhysicalDeviceExtensionSupport(const VkPhysicalDevice &device);
@@ -91,7 +97,15 @@ namespace Arcane
 		VkQueue m_CopyQueue;
 		VkQueue m_PresentQueue;
 
-		// Temp Stuff
+		VkCommandPool m_GraphicsCommandPool;
+		std::vector<VkCommandBuffer> m_GraphicsCommandBuffers;
+
+		const int MAX_FRAMES_IN_FLIGHT = 3;
+		size_t m_CurrentFrame = 0;
+		std::vector<VkSemaphore> m_ImageAvailableSemaphore, m_RenderFinishedSemaphore;
+		std::vector<VkFence> m_InFlightFences, m_ImagesInFlight;
+
+		// Temp Stuff - Should be abstracted in a pass system
 		VkPipeline m_GraphicsPipeline;
 		Shader *m_Shader;
 		VkRenderPass m_RenderPass;

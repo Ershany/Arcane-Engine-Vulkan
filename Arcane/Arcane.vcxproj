@@ -85,7 +85,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>ARC_PLATFORM_WINDOWS;ARC_DEBUG;ARC_BUILD_DLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(SolutionDir)Dependencies\VulkanSDK\1.2.131.2\Include;$(SolutionDir)Dependencies\GLFW\include;$(SolutionDir)Dependencies\GLM\include;$(SolutionDir)Arcane\src;$(SolutionDir)Dependencies\spdlog\include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)Dependencies\VulkanSDK\1.2.135.0\Include;$(SolutionDir)Dependencies\GLFW\include;$(SolutionDir)Dependencies\GLM\include;$(SolutionDir)Arcane\src;$(SolutionDir)Dependencies\spdlog\include</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>arcpch.h</PrecompiledHeaderFile>
@@ -102,7 +102,7 @@
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalDependencies>vulkan-1.lib;glfw3.lib;glm_static-x64.lib;user32.lib;gdi32.lib;shell32.lib;vcruntime.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>$(SolutionDir)Dependencies\VulkanSDK\1.2.131.2\Lib;$(SolutionDir)Dependencies\GLFW\lib-vc2019;$(SolutionDir)Dependencies\GLM\lib</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(SolutionDir)Dependencies\VulkanSDK\1.2.135.0\Lib;$(SolutionDir)Dependencies\GLFW\lib-vc2019;$(SolutionDir)Dependencies\GLM\lib</AdditionalLibraryDirectories>
       <OptimizeReferences>true</OptimizeReferences>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
     </Link>
@@ -115,7 +115,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>ARC_PLATFORM_WINDOWS;ARC_RELEASE;ARC_BUILD_DLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(SolutionDir)Dependencies\VulkanSDK\1.2.131.2\Include;$(SolutionDir)Dependencies\GLFW\include;$(SolutionDir)Dependencies\GLM\include;$(SolutionDir)Arcane\src;$(SolutionDir)Dependencies\spdlog\include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)Dependencies\VulkanSDK\1.2.135.0\Include;$(SolutionDir)Dependencies\GLFW\include;$(SolutionDir)Dependencies\GLM\include;$(SolutionDir)Arcane\src;$(SolutionDir)Dependencies\spdlog\include</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>arcpch.h</PrecompiledHeaderFile>
@@ -126,7 +126,7 @@
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>false</GenerateDebugInformation>
       <AdditionalDependencies>vulkan-1.lib;glfw3.lib;glm_static-x64.lib;user32.lib;gdi32.lib;shell32.lib;vcruntime.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>$(SolutionDir)Dependencies\VulkanSDK\1.2.131.2\Lib;$(SolutionDir)Dependencies\GLFW\lib-vc2019;$(SolutionDir)Dependencies\GLM\lib</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(SolutionDir)Dependencies\VulkanSDK\1.2.135.0\Lib;$(SolutionDir)Dependencies\GLFW\lib-vc2019;$(SolutionDir)Dependencies\GLM\lib</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Final|x64'">
@@ -137,7 +137,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>ARC_PLATFORM_WINDOWS;ARC_FINAL;ARC_BUILD_DLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(SolutionDir)Dependencies\VulkanSDK\1.2.131.2\Include;$(SolutionDir)Dependencies\GLFW\include;$(SolutionDir)Dependencies\GLM\include;$(SolutionDir)Arcane\src;$(SolutionDir)Dependencies\spdlog\include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)Dependencies\VulkanSDK\1.2.135.0\Include;$(SolutionDir)Dependencies\GLFW\include;$(SolutionDir)Dependencies\GLM\include;$(SolutionDir)Arcane\src;$(SolutionDir)Dependencies\spdlog\include</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>arcpch.h</PrecompiledHeaderFile>
@@ -148,7 +148,7 @@
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>false</GenerateDebugInformation>
       <AdditionalDependencies>vulkan-1.lib;glfw3.lib;glm_static-x64.lib;user32.lib;gdi32.lib;shell32.lib;vcruntime.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>$(SolutionDir)Dependencies\VulkanSDK\1.2.131.2\Lib;$(SolutionDir)Dependencies\GLFW\lib-vc2019;$(SolutionDir)Dependencies\GLM\lib</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(SolutionDir)Dependencies\VulkanSDK\1.2.135.0\Lib;$(SolutionDir)Dependencies\GLFW\lib-vc2019;$(SolutionDir)Dependencies\GLM\lib</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>

@@ -12,6 +12,7 @@ namespace Arcane
 
 	Shader::~Shader()
 	{
+		// Can be freed after the PSO is created, but then you can't create new pipeline state objects using said shader at runtime
 		vkDestroyShaderModule(*m_Device, m_VertexShaderModule, nullptr);
 		vkDestroyShaderModule(*m_Device, m_FragmentShaderModule, nullptr);
 	}

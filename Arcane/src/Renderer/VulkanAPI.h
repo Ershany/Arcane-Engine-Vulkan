@@ -36,8 +36,6 @@ namespace Arcane
 		void InitVulkan();
 
 		void CreateShader(const std::string &vertBinaryPath, const std::string &fragBinaryPath);
-
-		inline const VkDevice GetDevice() { return m_Device; }
 	private:
 		void Cleanup();
 

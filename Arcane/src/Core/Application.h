@@ -15,14 +15,16 @@ namespace Arcane
 		virtual  ~Application();
 
 		void Run();
+
+		void OnEvent(Event &e);
 	private:
+		void Cleanup();
 		void Loop();
 		void Render();
-		void Cleanup();
 	private:
-		Window m_Window;
+		Window *m_Window;
 		Timer m_Timer;
 
-		VulkanAPI m_Vulkan;
+		VulkanAPI *m_Vulkan;
 	};
 }

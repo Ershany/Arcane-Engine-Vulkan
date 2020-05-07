@@ -7,10 +7,13 @@
 
 namespace Arcane
 {
-	Application::Application()
-		: m_Window(std::string("Arcane Engine"), 1280, 720), m_Vulkan(&m_Window)
-	{
 
+	Application::Application()
+	{
+		m_Window = new Window(std::string("Arcane Engine"), 1280, 720);
+		m_Window->SetEventCallback(std::bind(&Application::OnEvent, this, std::placeholders::_1));
+
+		m_Vulkan = new VulkanAPI(m_Window);
 	}
 
 	Application::~Application()
@@ -20,9 +23,20 @@ namespace Arcane
 
 	void Application::Run()
 	{
-		m_Vulkan.InitVulkan();
+		m_Vulkan->InitVulkan();
 
 		Loop();
+	}
+
+	void Application::OnEvent(Event & e)
+	{
+		ARC_LOG_INFO("{0}", e);
+	}
+
+	void Application::Cleanup()
+	{
+		delete m_Vulkan;
+		delete m_Window;
 	}
 
 	void Application::Loop()
@@ -30,31 +44,24 @@ namespace Arcane
 		float fps = 0;
 		m_Timer.Reset();
 
-		while (!m_Window.ShouldClose())
+		while (!m_Window->ShouldClose())
 		{
-			m_Window.Update();
+			m_Window->Update();
 			Render();
 			++fps;
 
 			if (m_Timer.Elapsed() >= 1.0)
 			{
 				std::string profileString = std::string("- ") + std::to_string(fps) + std::string("fps - ") + std::to_string(1000.0f / fps) + std::string("ms");
-				m_Window.AppendTitle(profileString);
+				m_Window->AppendTitle(profileString);
 				fps = 0.0;
 				m_Timer.Rewind(1.0);
 			}
 		}
-
-		vkDeviceWaitIdle(m_Vulkan.GetDevice()); // If window closes finish GPU work before deleting resources that are in-flight
 	}
 
 	void Application::Render()
 	{
-		m_Vulkan.Render();
-	}
-
-	void Application::Cleanup()
-	{
-	
+		m_Vulkan->Render();
 	}
 }

@@ -1,6 +1,7 @@
 #include "arcpch.h"
 #include "Window.h"
 
+#include "Application.h"
 #include "Events/ApplicationEvent.h"
 #include "Events/KeyEvent.h"
 #include "Events/MouseEvent.h"
@@ -17,8 +18,6 @@ namespace Arcane
 		m_Data.Title = title;
 		m_Data.Width = width; m_Data.Height = height;
 		m_Data.VSync = false;
-
-		Init();
 	}
 
 	Window::~Window()
@@ -28,8 +27,10 @@ namespace Arcane
 		glfwTerminate();
 	}
 
-	void Window::Init()
+	void Window::Init(Application *application)
 	{
+		m_Data.App = application;
+
 		int success = glfwInit();
 		ARC_ASSERT(success, "Failed to initialize GLFW");
 		glfwSetErrorCallback(GLFWErrorCallback);
@@ -50,7 +51,7 @@ namespace Arcane
 			data->Height = height;
 
 			WindowResizeEvent event(width, height);
-			data->EventCallback(event);
+			data->App->OnEvent(event);
 		});
 
 		glfwSetWindowCloseCallback(m_Window, [](GLFWwindow *window)
@@ -58,7 +59,7 @@ namespace Arcane
 			WindowData *data = static_cast<WindowData*>(glfwGetWindowUserPointer(window));
 
 			WindowCloseEvent event;
-			data->EventCallback(event);
+			data->App->OnEvent(event);
 		});
 
 		glfwSetKeyCallback(m_Window, [](GLFWwindow *window, int key, int scancode, int action, int mods)
@@ -70,19 +71,19 @@ namespace Arcane
 				case GLFW_PRESS:
 				{
 					KeyPressedEvent event(key, 0);
-					data->EventCallback(event);
+					data->App->OnEvent(event);
 					break;
 				}
 				case GLFW_RELEASE:
 				{
 					KeyReleasedEvent event(key);
-					data->EventCallback(event);
+					data->App->OnEvent(event);
 					break;
 				}
 				case GLFW_REPEAT:
 				{
 					KeyPressedEvent event(key, 1);
-					data->EventCallback(event);
+					data->App->OnEvent(event);
 					break;
 				}
 				default:
@@ -102,13 +103,13 @@ namespace Arcane
 				case GLFW_PRESS:
 				{
 					MouseButtonPressedEvent event(button);
-					data->EventCallback(event);
+					data->App->OnEvent(event);
 					break;
 				}
 				case GLFW_RELEASE:
 				{
 					MouseButtonReleasedEvent event(button);
-					data->EventCallback(event);
+					data->App->OnEvent(event);
 					break;
 				}
 				default:
@@ -123,8 +124,8 @@ namespace Arcane
 		{
 			WindowData *data = static_cast<WindowData*>(glfwGetWindowUserPointer(window));
 
-			MouseScrolledEvent event(xOffset, yOffset);
-			data->EventCallback(event);
+			MouseScrolledEvent event(static_cast<float>(xOffset), static_cast<float>(yOffset));
+			data->App->OnEvent(event);
 		});
 
 		glfwSetCursorPosCallback(m_Window, [](GLFWwindow *window, double xPos, double yPos)
@@ -132,7 +133,7 @@ namespace Arcane
 			WindowData *data = static_cast<WindowData*>(glfwGetWindowUserPointer(window));
 
 			MouseMovedEvent event(static_cast<float>(xPos), static_cast<float>(yPos));
-			data->EventCallback(event);
+			data->App->OnEvent(event);
 		});
 	}
 

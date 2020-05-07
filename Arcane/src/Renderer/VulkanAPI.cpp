@@ -2,13 +2,16 @@
 #include "VulkanAPI.h"
 
 #include "Defs.h"
+#include "Core/Window.h"
 #include "Core/FileUtils.h"
+#include "Renderer/Shader.h"
 
 namespace Arcane
 {
 	VulkanAPI::VulkanAPI(const Window *const window)
 		: m_Window(window), m_Instance(VK_NULL_HANDLE), m_PhysicalDevice(VK_NULL_HANDLE), m_Device(VK_NULL_HANDLE), m_Swapchain(VK_NULL_HANDLE), m_SwapchainImageFormat(VK_FORMAT_UNDEFINED),
-		m_SwapchainExtent(), m_Surface(VK_NULL_HANDLE), m_GraphicsQueue(VK_NULL_HANDLE), m_ComputeQueue(VK_NULL_HANDLE), m_CopyQueue(VK_NULL_HANDLE), m_PresentQueue(VK_NULL_HANDLE), m_DebugMessenger(VK_NULL_HANDLE)
+		m_SwapchainExtent(), m_Surface(VK_NULL_HANDLE), m_GraphicsQueue(VK_NULL_HANDLE), m_ComputeQueue(VK_NULL_HANDLE), m_CopyQueue(VK_NULL_HANDLE), m_PresentQueue(VK_NULL_HANDLE), m_GraphicsCommandPool(VK_NULL_HANDLE),
+		m_DebugMessenger(VK_NULL_HANDLE)
 	{
 	
 	}

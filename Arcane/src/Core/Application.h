@@ -1,13 +1,14 @@
 #pragma once
 
-#include "Window.h"
-#include "Renderer/VulkanAPI.h"
 #include "Defs.h"
-#include "Events/Event.h"
 #include "Core/Timer.h"
+#include "Events/Event.h"
 
 namespace Arcane
 {
+	class Window;
+	class VulkanAPI;
+
 	class Application
 	{
 	public:

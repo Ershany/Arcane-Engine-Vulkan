@@ -1,17 +1,17 @@
 #include "arcpch.h"
 #include "Application.h"
 
+#include "Core/Window.h"
 #include "Core/FileUtils.h"
 #include "Core/Logger.h"
-#include "Events/ApplicationEvent.h"
+#include "Renderer/VulkanAPI.h"
 
 namespace Arcane
 {
-
 	Application::Application()
 	{
 		m_Window = new Window(std::string("Arcane Engine"), 1280, 720);
-		m_Window->SetEventCallback(std::bind(&Application::OnEvent, this, std::placeholders::_1));
+		m_Window->Init(this);
 
 		m_Vulkan = new VulkanAPI(m_Window);
 	}

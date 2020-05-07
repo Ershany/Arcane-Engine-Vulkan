@@ -1,10 +1,10 @@
 #pragma once
 
-#include "Core/Window.h"
-#include "Renderer/Shader.h"
-
 namespace Arcane
 {
+	class Window;
+	class Shader;
+
 	struct DeviceQueueIndices
 	{
 		std::optional<uint32_t> graphicsQueue;

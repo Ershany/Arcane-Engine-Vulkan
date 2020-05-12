@@ -3,6 +3,7 @@
 
 #include "Core/Window.h"
 #include "Core/FileUtils.h"
+#include "Core/Layer.h"
 #include "Core/Logger.h"
 #include "Renderer/VulkanAPI.h"
 
@@ -28,9 +29,26 @@ namespace Arcane
 		Loop();
 	}
 
-	void Application::OnEvent(Event & e)
+	void Application::OnEvent(Event &e)
 	{
+		for (auto iter = m_LayerStack.end(); iter != m_LayerStack.begin(); --iter)
+		{
+			(*iter)->OnEvent(e);
+			if (e.Handled)
+				break;
+		}
+
 		ARC_LOG_INFO("{0}", e);
+	}
+
+	void Application::PushLayer(Layer *layer)
+	{
+		m_LayerStack.PushLayer(layer);
+	}
+
+	void Application::PushOverlay(Layer *overlay)
+	{
+		m_LayerStack.PushOverlay(overlay);
 	}
 
 	void Application::Cleanup()
@@ -47,9 +65,13 @@ namespace Arcane
 		while (!m_Window->ShouldClose())
 		{
 			m_Window->Update();
+			for (auto layer : m_LayerStack)
+			{
+				layer->OnUpdate();
+			}
+
 			Render();
 			++fps;
-
 			if (m_Timer.Elapsed() >= 1.0)
 			{
 				std::string profileString = std::string("- ") + std::to_string(fps) + std::string("fps - ") + std::to_string(1000.0f / fps) + std::string("ms");

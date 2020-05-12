@@ -256,9 +256,8 @@ namespace Arcane
 		uint32_t swapchainImageCount = 2u;
 		switch (g_SwapchainPresentMode)
 		{
-			//case SwapchainPresentMode::VSYNC_OFF: swapchainImageCount = 1u; break; // TODO: Add support for turning vsync off
-		case SwapchainPresentMode::VSYNC_TRIPLE_BUFFER: swapchainImageCount = 3u; break;
-		case SwapchainPresentMode::VSYNC_DOUBLE_BUFFER: swapchainImageCount = 2u; break;
+		case SwapchainPresentMode::TRIPLE_BUFFER: swapchainImageCount = 3u; break;
+		case SwapchainPresentMode::DOUBLE_BUFFER: swapchainImageCount = 2u; break;
 		}
 		swapchainImageCount = std::clamp(swapchainImageCount, swapchainDetails.capabilities.minImageCount, swapchainDetails.capabilities.maxImageCount);
 		ARC_LOG_INFO("Swapchain buffer count: {0}", swapchainImageCount);
@@ -289,8 +288,8 @@ namespace Arcane
 		else
 		{
 			createInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
-			createInfo.queueFamilyIndexCount = 0; // Optional
-			createInfo.pQueueFamilyIndices = nullptr; // Optional
+			createInfo.queueFamilyIndexCount = 0;
+			createInfo.pQueueFamilyIndices = nullptr;
 		}
 		createInfo.preTransform = swapchainDetails.capabilities.currentTransform;
 		createInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
@@ -351,7 +350,7 @@ namespace Arcane
 		subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS; // Vulkan can support compute subpass so graphics queue needs to be specified
 		subpass.colorAttachmentCount = 1;
 		subpass.pColorAttachments = &colourAttachmentRef;
-		//subpass.pInputAttachments // Attachmesnts that are read from a shader
+		//subpass.pInputAttachments // Attachments that are read from a shader
 		//subpass.pResolveAttachments // Attachments used for multisampling colour attachments
 		//subpass.pDepthStencilAttachments // Attachment for a depth and stencil attachment
 		//subpass.pPreserveAttachments // Attachments that are not used by this subpass, but for which the data must be preserved
@@ -386,7 +385,6 @@ namespace Arcane
 	{
 		m_Shader = new Shader(&m_Device, "res/Shaders/simple_vert.spv", "res/Shaders/simple_frag.spv");
 
-		// TODO: When abstracted the pipeline state create infos should fill most fields, even if it is default values
 		VkPipelineVertexInputStateCreateInfo vertexInputInfo = {};
 		vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
 		vertexInputInfo.vertexBindingDescriptionCount = 0;
@@ -424,7 +422,7 @@ namespace Arcane
 		rasterizationCreateInfo.depthClampEnable = VK_FALSE; // TODO: Might be useful for shadowmaps?
 		rasterizationCreateInfo.rasterizerDiscardEnable = VK_FALSE;
 		rasterizationCreateInfo.polygonMode = VK_POLYGON_MODE_FILL; // TODO: This is where we can do wireframe
-		rasterizationCreateInfo.lineWidth = 1.0f; // Any line thicker than 1.0 requires you to enable the wideLines GPU feature
+		rasterizationCreateInfo.lineWidth = 1.0f;
 		rasterizationCreateInfo.cullMode = VK_CULL_MODE_BACK_BIT;
 		rasterizationCreateInfo.frontFace = VK_FRONT_FACE_CLOCKWISE;
 		rasterizationCreateInfo.depthBiasEnable = VK_FALSE;
@@ -432,7 +430,7 @@ namespace Arcane
 		rasterizationCreateInfo.depthBiasClamp = 0.0f;
 		rasterizationCreateInfo.depthBiasSlopeFactor = 0.0f;
 
-		VkPipelineMultisampleStateCreateInfo multisampleCreateInfo = {}; // Enabling MSAA requires enabling a GPU feature as well
+		VkPipelineMultisampleStateCreateInfo multisampleCreateInfo = {}; // Enabling MSAA requires enabling a GPU feature
 		multisampleCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
 		multisampleCreateInfo.sampleShadingEnable = VK_FALSE;
 		multisampleCreateInfo.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
@@ -765,8 +763,8 @@ namespace Arcane
 		switch (g_SwapchainPresentMode)
 		{
 			//case SwapchainPresentMode::VSYNC_OFF: break; // TODO: Add support for turning vsync off
-		case SwapchainPresentMode::VSYNC_DOUBLE_BUFFER: desiredPresentMode = VK_PRESENT_MODE_FIFO_KHR; break;
-		case SwapchainPresentMode::VSYNC_TRIPLE_BUFFER: desiredPresentMode = VK_PRESENT_MODE_MAILBOX_KHR; break;
+		case SwapchainPresentMode::DOUBLE_BUFFER: desiredPresentMode = VK_PRESENT_MODE_FIFO_KHR; break;
+		case SwapchainPresentMode::TRIPLE_BUFFER: desiredPresentMode = VK_PRESENT_MODE_MAILBOX_KHR; break;
 		}
 
 		for (size_t i = 0; i < availablePresentModes.size(); i++)

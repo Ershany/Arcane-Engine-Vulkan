@@ -152,7 +152,9 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="src\Core\Layer.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="src\Core\LayerStack.cpp" />
     <ClCompile Include="src\Core\Logger.cpp" />
     <ClCompile Include="src\Core\FileUtils.cpp" />
     <ClCompile Include="src\Core\Application.cpp" />
@@ -170,6 +172,8 @@
     <ClCompile Include="src\Core\Timer.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="src\Core\Layer.h" />
+    <ClInclude Include="src\Core\LayerStack.h" />
     <ClInclude Include="src\Core\Logger.h" />
     <ClInclude Include="src\Core\Core.h" />
     <ClInclude Include="src\Core\Singleton.h" />

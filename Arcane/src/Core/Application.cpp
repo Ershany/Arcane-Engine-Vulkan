@@ -31,6 +31,9 @@ namespace Arcane
 
 	void Application::OnEvent(Event &e)
 	{
+		EventDispatcher dispatcher(e);
+		dispatcher.Dispatch<WindowResizeEvent>(std::bind(&Application::OnWindowResize, this, std::placeholders::_1));
+
 		for (auto iter = m_LayerStack.end(); iter != m_LayerStack.begin(); --iter)
 		{
 			(*iter)->OnEvent(e);
@@ -85,5 +88,15 @@ namespace Arcane
 	void Application::Render()
 	{
 		m_Vulkan->Render();
+	}
+
+	bool Application::OnWindowResize(WindowResizeEvent &e)
+	{
+		if (e.GetWidth() > 0 && e.GetHeight() > 0)
+		{
+			m_Vulkan->NotifyWindowResized();
+		}
+
+		return false;
 	}
 }

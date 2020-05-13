@@ -3,6 +3,7 @@
 #include "Defs.h"
 #include "Core/Timer.h"
 #include "Events/Event.h"
+#include "Events/ApplicationEvent.h"
 #include "Core/LayerStack.h"
 
 namespace Arcane
@@ -27,6 +28,8 @@ namespace Arcane
 		void Cleanup();
 		void Loop();
 		void Render();
+
+		bool OnWindowResize(WindowResizeEvent &e);
 	private:
 		Window *m_Window;
 		Timer m_Timer;

@@ -26,7 +26,13 @@ namespace Arcane
 		vkWaitForFences(m_Device, 1, &m_InFlightFences[m_CurrentFrame], VK_TRUE, UINT64_MAX);
 
 		uint32_t imageIndex;
-		vkAcquireNextImageKHR(m_Device, m_Swapchain, UINT64_MAX, m_ImageAvailableSemaphore[m_CurrentFrame], VK_NULL_HANDLE, &imageIndex);
+		VkResult result = vkAcquireNextImageKHR(m_Device, m_Swapchain, UINT64_MAX, m_ImageAvailableSemaphore[m_CurrentFrame], VK_NULL_HANDLE, &imageIndex);
+		if (result == VK_ERROR_OUT_OF_DATE_KHR)
+		{
+			RecreateSwapchain();
+			return;
+		}
+		ARC_ASSERT((result == VK_SUCCESS || result == VK_SUBOPTIMAL_KHR), "Vulkan: Failed to acquire swap chain image");
 
 		// Check if a previous frame is using this image, only needed if MAX_FRAMES_IN_FLIGHT is higher than the # of swapchain images
 		if (m_ImagesInFlight[imageIndex] != VK_NULL_HANDLE)
@@ -50,7 +56,7 @@ namespace Arcane
 		submitInfo.pSignalSemaphores = signalSemaphores;
 
 		vkResetFences(m_Device, 1, &m_InFlightFences[m_CurrentFrame]);
-		VkResult result = vkQueueSubmit(m_GraphicsQueue, 1, &submitInfo, m_InFlightFences[m_CurrentFrame]);
+		result = vkQueueSubmit(m_GraphicsQueue, 1, &submitInfo, m_InFlightFences[m_CurrentFrame]);
 		ARC_ASSERT(result == VK_SUCCESS, "Failed to submit Vulkan draw command buffer");
 
 		VkSwapchainKHR swapChains[] = { m_Swapchain };
@@ -65,7 +71,16 @@ namespace Arcane
 		presentInfo.pImageIndices = &imageIndex;
 		presentInfo.pResults = nullptr;
 		
-		vkQueuePresentKHR(m_PresentQueue, &presentInfo);
+		result = vkQueuePresentKHR(m_PresentQueue, &presentInfo);
+		if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR || m_FramebufferResized)
+		{
+			m_FramebufferResized = false;
+			RecreateSwapchain();
+		}
+		else
+		{
+			ARC_ASSERT(result == VK_SUCCESS, "Vulkan: Failed to present the swapchain image");
+		}
 
 		m_CurrentFrame = (m_CurrentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
 	}
@@ -94,7 +109,9 @@ namespace Arcane
 
 	void VulkanAPI::Cleanup()
 	{
-		vkDeviceWaitIdle(m_Device); // Finish GPU work before freeing resources
+		vkDeviceWaitIdle(m_Device);
+
+		CleanupSwapchain();
 
 		for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
 		{
@@ -104,19 +121,6 @@ namespace Arcane
 		}
 
 		vkDestroyCommandPool(m_Device, m_GraphicsCommandPool, nullptr);
-
-		vkDestroyPipeline(m_Device, m_GraphicsPipeline, nullptr);
-		vkDestroyPipelineLayout(m_Device, m_PipelineLayout, nullptr);
-
-		vkDestroyRenderPass(m_Device, m_RenderPass, nullptr);
-
-		for (size_t i = 0; i < m_SwapchainFramebuffers.size(); i++)
-			vkDestroyFramebuffer(m_Device, m_SwapchainFramebuffers[i], nullptr);
-
-		for (size_t i = 0; i < m_SwapchainImageViews.size(); i++)
-			vkDestroyImageView(m_Device, m_SwapchainImageViews[i], nullptr);
-
-		vkDestroySwapchainKHR(m_Device, m_Swapchain, nullptr);
 
 		delete m_Shader;
 
@@ -128,6 +132,25 @@ namespace Arcane
 		vkDestroySurfaceKHR(m_Instance, m_Surface, nullptr);
 
 		vkDestroyInstance(m_Instance, nullptr);
+	}
+
+	void VulkanAPI::CleanupSwapchain()
+	{
+		vkDeviceWaitIdle(m_Device);
+
+		vkFreeCommandBuffers(m_Device, m_GraphicsCommandPool, static_cast<uint32_t>(m_GraphicsCommandBuffers.size()), m_GraphicsCommandBuffers.data());
+
+		vkDestroyPipeline(m_Device, m_GraphicsPipeline, nullptr);
+		vkDestroyPipelineLayout(m_Device, m_PipelineLayout, nullptr);
+		vkDestroyRenderPass(m_Device, m_RenderPass, nullptr);
+
+		for (size_t i = 0; i < m_SwapchainFramebuffers.size(); i++)
+			vkDestroyFramebuffer(m_Device, m_SwapchainFramebuffers[i], nullptr);
+
+		for (size_t i = 0; i < m_SwapchainImageViews.size(); i++)
+			vkDestroyImageView(m_Device, m_SwapchainImageViews[i], nullptr);
+
+		vkDestroySwapchainKHR(m_Device, m_Swapchain, nullptr);
 	}
 
 	void VulkanAPI::CreateInstance()
@@ -611,6 +634,24 @@ namespace Arcane
 			result = vkCreateFence(m_Device, &fenceInfo, nullptr, &m_InFlightFences[i]);
 			ARC_ASSERT(result == VK_SUCCESS, "Failed to create Vulkan fence");
 		}
+	}
+
+	void VulkanAPI::RecreateSwapchain()
+	{
+		// Pause render thread if window is minimized
+		while (m_Window->GetWidth() == 0 || m_Window->GetHeight() == 0)
+		{
+			glfwWaitEvents();
+		}
+
+		CleanupSwapchain();
+
+		CreateSwapchain();
+		CreateSwapchainImageViews();
+		CreateRenderPass();
+		CreateGraphicsPipeline();
+		CreateFramebuffers();
+		CreateCommandBuffers();
 	}
 
 	int VulkanAPI::ScorePhysicalDeviceSuitability(const VkPhysicalDevice &device)

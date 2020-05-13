@@ -36,8 +36,12 @@ namespace Arcane
 		void InitVulkan();
 
 		void CreateShader(const std::string &vertBinaryPath, const std::string &fragBinaryPath);
+
+		// Setters
+		inline void NotifyWindowResized() { m_FramebufferResized = true; }
 	private:
 		void Cleanup();
+		void CleanupSwapchain();
 
 		void CreateInstance();
 		void CreateSurface();
@@ -51,6 +55,7 @@ namespace Arcane
 		void CreateCommandPool();
 		void CreateCommandBuffers();
 		void CreateSyncObjects();
+		void RecreateSwapchain();
 
 		int ScorePhysicalDeviceSuitability(const VkPhysicalDevice &device);
 		bool CheckPhysicalDeviceExtensionSupport(const VkPhysicalDevice &device);
@@ -102,6 +107,8 @@ namespace Arcane
 		size_t m_CurrentFrame = 0;
 		std::vector<VkSemaphore> m_ImageAvailableSemaphore, m_RenderFinishedSemaphore;
 		std::vector<VkFence> m_InFlightFences, m_ImagesInFlight;
+
+		bool m_FramebufferResized = false;
 
 		// Temp Stuff - Should be abstracted in a pass system
 		VkPipeline m_GraphicsPipeline;

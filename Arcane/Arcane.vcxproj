@@ -152,6 +152,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="src\Layers\ImGuiLayer.cpp" />
     <ClCompile Include="src\Core\Layer.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="src\Core\LayerStack.cpp" />
@@ -170,8 +171,34 @@
     <ClCompile Include="src\Renderer\Shader.cpp" />
     <ClCompile Include="src\Core\Window.cpp" />
     <ClCompile Include="src\Core\Timer.cpp" />
+    <ClCompile Include="src\Vendor\ImGui\imgui.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Final|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="src\Vendor\ImGui\imgui_demo.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Final|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="src\Vendor\ImGui\imgui_draw.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Final|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="src\Vendor\ImGui\imgui_impl_vulkan.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Final|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="src\Vendor\ImGui\imgui_widgets.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Final|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="src\Layers\ImGuiLayer.h" />
     <ClInclude Include="src\Core\Layer.h" />
     <ClInclude Include="src\Core\LayerStack.h" />
     <ClInclude Include="src\Core\Logger.h" />
@@ -189,6 +216,13 @@
     <ClInclude Include="src\Renderer\Shader.h" />
     <ClInclude Include="src\Core\Window.h" />
     <ClInclude Include="src\Core\Timer.h" />
+    <ClInclude Include="src\Vendor\ImGui\imconfig.h" />
+    <ClInclude Include="src\Vendor\ImGui\imgui.h" />
+    <ClInclude Include="src\Vendor\ImGui\imgui_impl_vulkan.h" />
+    <ClInclude Include="src\Vendor\ImGui\imgui_internal.h" />
+    <ClInclude Include="src\Vendor\ImGui\imstb_rectpack.h" />
+    <ClInclude Include="src\Vendor\ImGui\imstb_textedit.h" />
+    <ClInclude Include="src\Vendor\ImGui\imstb_truetype.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="res\Shaders\simple.frag" />

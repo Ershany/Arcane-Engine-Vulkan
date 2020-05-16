@@ -26,6 +26,42 @@ namespace Arcane
 		std::vector<VkPresentModeKHR> presentModes;
 	};
 
+	// Temporary
+	struct Vertex
+	{
+		glm::vec2 pos;
+		glm::vec3 colour;
+
+		// Describes vertex buffers
+		static VkVertexInputBindingDescription GetBindingDescription()
+		{
+			VkVertexInputBindingDescription bindingDescription = {};
+			bindingDescription.binding = 0;
+			bindingDescription.stride = sizeof(Vertex);
+			bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX; // This is where you can use instance rendering
+
+			return bindingDescription;
+		}
+
+		// Describes attributes, allows for different variable locations to be defined in different vertex buffers
+		static std::array<VkVertexInputAttributeDescription, 2> GetAttributeDescription()
+		{
+			std::array<VkVertexInputAttributeDescription, 2> attributeDescription{};
+			
+			attributeDescription[0].binding = 0;
+			attributeDescription[0].location = 0;
+			attributeDescription[0].offset = offsetof(Vertex, pos);
+			attributeDescription[0].format = VK_FORMAT_R32G32_SFLOAT;
+
+			attributeDescription[1].binding = 0;
+			attributeDescription[1].location = 1;
+			attributeDescription[1].offset = offsetof(Vertex, colour);
+			attributeDescription[1].format = VK_FORMAT_R32G32B32_SFLOAT;
+
+			return attributeDescription;
+		}
+	};
+
 	class VulkanAPI
 	{
 	public:
@@ -35,7 +71,10 @@ namespace Arcane
 		void Render();
 		void InitVulkan();
 
+		// Helpers
 		void CreateShader(const std::string &vertBinaryPath, const std::string &fragBinaryPath);
+		void CreateBuffer(VkDeviceSize bufferSize, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkSharingMode sharingMode, VkBuffer *outBuffer, VkDeviceMemory *outBufferMemory);
+		void CopyBuffer(VkBuffer srcBuffer, VkBuffer destBuffer, VkDeviceSize size);
 
 		// Setters
 		inline void NotifyWindowResized() { m_FramebufferResized = true; }
@@ -56,6 +95,9 @@ namespace Arcane
 		void CreateCommandBuffers();
 		void CreateSyncObjects();
 		void RecreateSwapchain();
+		void CreateVertexBuffer();
+
+		uint32_t FindMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties);
 
 		int ScorePhysicalDeviceSuitability(const VkPhysicalDevice &device);
 		bool CheckPhysicalDeviceExtensionSupport(const VkPhysicalDevice &device);
@@ -101,6 +143,7 @@ namespace Arcane
 		VkQueue m_PresentQueue;
 
 		VkCommandPool m_GraphicsCommandPool;
+		VkCommandPool m_CopyCommandPool;
 		std::vector<VkCommandBuffer> m_GraphicsCommandBuffers;
 
 		const int MAX_FRAMES_IN_FLIGHT = 3;
@@ -115,6 +158,8 @@ namespace Arcane
 		Shader *m_Shader;
 		VkRenderPass m_RenderPass;
 		VkPipelineLayout m_PipelineLayout;
+		VkDeviceMemory m_VertexBufferMemory;
+		VkBuffer m_VertexBuffer;
 
 		const std::vector<const char*> m_RequiredExtensions = {
 			VK_KHR_SWAPCHAIN_EXTENSION_NAME

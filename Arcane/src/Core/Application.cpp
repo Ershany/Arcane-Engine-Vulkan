@@ -41,7 +41,7 @@ namespace Arcane
 				break;
 		}
 
-		ARC_LOG_INFO("{0}", e);
+		//ARC_LOG_INFO("{0}", e);
 	}
 
 	void Application::PushLayer(Layer *layer)

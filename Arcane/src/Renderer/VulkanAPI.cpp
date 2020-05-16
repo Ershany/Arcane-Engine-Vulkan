@@ -98,6 +98,7 @@ namespace Arcane
 		CreateGraphicsPipeline();
 		CreateFramebuffers();
 		CreateCommandPool();
+		CreateVertexBuffer();
 		CreateCommandBuffers();
 		CreateSyncObjects();
 	}
@@ -105,6 +106,70 @@ namespace Arcane
 	void VulkanAPI::CreateShader(const std::string & vertBinaryPath, const std::string & fragBinaryPath)
 	{
 		
+	}
+
+	void VulkanAPI::CreateBuffer(VkDeviceSize bufferSize, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkSharingMode sharingMode, VkBuffer *outBuffer, VkDeviceMemory *outBufferMemory)
+	{
+		VkBufferCreateInfo bufferInfo = {};
+		bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+		bufferInfo.pNext = nullptr;
+		bufferInfo.size = bufferSize;
+		bufferInfo.usage = usage;
+		bufferInfo.sharingMode = sharingMode;
+
+		VkResult result = vkCreateBuffer(m_Device, &bufferInfo, nullptr, outBuffer);
+		ARC_ASSERT(result == VK_SUCCESS, "Vulkan: Failed to create buffer");
+
+		VkMemoryRequirements memRequirements;
+		vkGetBufferMemoryRequirements(m_Device, *outBuffer, &memRequirements);
+
+		VkMemoryAllocateInfo allocInfo = {};
+		allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+		allocInfo.pNext = nullptr;
+		allocInfo.allocationSize = memRequirements.size;
+		allocInfo.memoryTypeIndex = FindMemoryType(memRequirements.memoryTypeBits, properties);
+
+		result = vkAllocateMemory(m_Device, &allocInfo, nullptr, outBufferMemory);
+		ARC_ASSERT(result == VK_SUCCESS, "Vulkan: Failed to allocate buffer memory");
+
+		vkBindBufferMemory(m_Device, *outBuffer, *outBufferMemory, 0); // Associates the allocated memory with the buffer
+	}
+
+	void VulkanAPI::CopyBuffer(VkBuffer srcBuffer, VkBuffer destBuffer, VkDeviceSize size)
+	{
+		VkCommandBufferAllocateInfo allocInfo = {};
+		allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+		allocInfo.pNext = nullptr;
+		allocInfo.commandBufferCount = 1;
+		allocInfo.commandPool = m_GraphicsCommandPool;
+		allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+
+		VkCommandBuffer commandBuffer;
+		vkAllocateCommandBuffers(m_Device, &allocInfo, &commandBuffer);
+
+		VkCommandBufferBeginInfo beginInfo = {};
+		beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+		beginInfo.pNext = nullptr;
+		beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+		beginInfo.pInheritanceInfo = nullptr;
+
+		vkBeginCommandBuffer(commandBuffer, &beginInfo);
+		VkBufferCopy copyRegion = {};
+		copyRegion.size = size;
+		copyRegion.srcOffset = 0;
+		copyRegion.dstOffset = 0;
+		vkCmdCopyBuffer(commandBuffer, srcBuffer, destBuffer, 1, &copyRegion);
+		vkEndCommandBuffer(commandBuffer);
+
+		VkSubmitInfo submitInfo = {};
+		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+		submitInfo.pNext = nullptr;
+		submitInfo.commandBufferCount = 1;
+		submitInfo.pCommandBuffers = &commandBuffer;
+		vkQueueSubmit(m_GraphicsQueue, 1, &submitInfo, VK_NULL_HANDLE);
+		vkQueueWaitIdle(m_GraphicsQueue);
+
+		vkFreeCommandBuffers(m_Device, m_GraphicsCommandPool, 1, &commandBuffer);
 	}
 
 	void VulkanAPI::Cleanup()
@@ -123,6 +188,9 @@ namespace Arcane
 		vkDestroyCommandPool(m_Device, m_GraphicsCommandPool, nullptr);
 
 		delete m_Shader;
+
+		vkDestroyBuffer(m_Device, m_VertexBuffer, nullptr);
+		vkFreeMemory(m_Device, m_VertexBufferMemory, nullptr);
 
 		vkDestroyDevice(m_Device, nullptr);
 
@@ -407,13 +475,15 @@ namespace Arcane
 	void VulkanAPI::CreateGraphicsPipeline()
 	{
 		m_Shader = new Shader(&m_Device, "res/Shaders/simple_vert.spv", "res/Shaders/simple_frag.spv");
+		auto bindingDescription = Vertex::GetBindingDescription();
+		auto attributeDescription = Vertex::GetAttributeDescription();
 
 		VkPipelineVertexInputStateCreateInfo vertexInputInfo = {};
 		vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-		vertexInputInfo.vertexBindingDescriptionCount = 0;
-		vertexInputInfo.pVertexBindingDescriptions = nullptr;
-		vertexInputInfo.vertexAttributeDescriptionCount = 0;
-		vertexInputInfo.pVertexAttributeDescriptions = nullptr;
+		vertexInputInfo.vertexBindingDescriptionCount = 1;
+		vertexInputInfo.pVertexBindingDescriptions = &bindingDescription;
+		vertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescription.size());
+		vertexInputInfo.pVertexAttributeDescriptions = attributeDescription.data();
 
 		VkPipelineInputAssemblyStateCreateInfo inputAssemblyInfo = {};
 		inputAssemblyInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
@@ -547,14 +617,23 @@ namespace Arcane
 	{
 		DeviceQueueIndices queueIndices = FindDeviceQueueIndices(m_PhysicalDevice);
 
-		VkCommandPoolCreateInfo commandPoolCreateInfo = {};
-		commandPoolCreateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-		commandPoolCreateInfo.pNext = nullptr;
-		commandPoolCreateInfo.queueFamilyIndex = queueIndices.graphicsQueue.value();
-		commandPoolCreateInfo.flags = 0;
+		VkCommandPoolCreateInfo graphicsCommandPoolInfo = {};
+		graphicsCommandPoolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+		graphicsCommandPoolInfo.pNext = nullptr;
+		graphicsCommandPoolInfo.queueFamilyIndex = queueIndices.graphicsQueue.value();
+		graphicsCommandPoolInfo.flags = 0;
 
-		VkResult result = vkCreateCommandPool(m_Device, &commandPoolCreateInfo, nullptr, &m_GraphicsCommandPool);
-		ARC_ASSERT(result == VK_SUCCESS, "Failed to create Vulkan Command Pool")
+		VkResult result = vkCreateCommandPool(m_Device, &graphicsCommandPoolInfo, nullptr, &m_GraphicsCommandPool);
+		ARC_ASSERT(result == VK_SUCCESS, "Vulkan: Failed to create graphics command pool");
+
+		VkCommandPoolCreateInfo copyCommandPoolInfo = {};
+		copyCommandPoolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+		copyCommandPoolInfo.pNext = nullptr;
+		copyCommandPoolInfo.queueFamilyIndex = queueIndices.copyQueue.value();
+		copyCommandPoolInfo.flags = 0;
+
+		result = vkCreateCommandPool(m_Device, &copyCommandPoolInfo, nullptr, &m_CopyCommandPool);
+		ARC_ASSERT(result == VK_SUCCESS, "Vulkan: Failed to create copy command pool");
 	}
 
 	void VulkanAPI::CreateCommandBuffers()
@@ -594,12 +673,16 @@ namespace Arcane
 			renderPassBegin.framebuffer = m_SwapchainFramebuffers[i];
 			renderPassBegin.renderArea.offset = { 0, 0 };
 			renderPassBegin.renderArea.extent = m_SwapchainExtent;
-			VkClearValue clearColour = { 0.0f, 0.0f, 1.0f, 1.0f };
+			VkClearValue clearColour = { 0.0f, 0.0f, 0.0f, 1.0f };
 			renderPassBegin.clearValueCount = 1;
 			renderPassBegin.pClearValues = &clearColour;
 
+			VkBuffer vertexBuffers[] = { m_VertexBuffer };
+			VkDeviceSize offsets[] = { 0 };
+
 			vkCmdBeginRenderPass(m_GraphicsCommandBuffers[i], &renderPassBegin, VK_SUBPASS_CONTENTS_INLINE); // Need to specify if you are using secondary command buffers here
 			vkCmdBindPipeline(m_GraphicsCommandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, m_GraphicsPipeline);
+			vkCmdBindVertexBuffers(m_GraphicsCommandBuffers[i], 0, 1, vertexBuffers, offsets);
 			vkCmdDraw(m_GraphicsCommandBuffers[i], 3, 1, 0, 0);
 			vkCmdEndRenderPass(m_GraphicsCommandBuffers[i]);
 			
@@ -644,6 +727,8 @@ namespace Arcane
 			glfwWaitEvents();
 		}
 
+		ARC_LOG_INFO("Vulkan: Recreating the Swapchain");
+
 		CleanupSwapchain();
 
 		CreateSwapchain();
@@ -652,6 +737,51 @@ namespace Arcane
 		CreateGraphicsPipeline();
 		CreateFramebuffers();
 		CreateCommandBuffers();
+	}
+
+	void VulkanAPI::CreateVertexBuffer()
+	{
+		const std::vector<Vertex> vertices =
+		{
+			{{0.0f, -0.5f}, {1.0f, 1.0f, 1.0f}},
+			{{0.5f, 0.5f}, {0.0f, 1.0f, 0.0f}},
+			{{-0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}}
+		};
+
+		VkDeviceSize bufferSize = sizeof(vertices[0]) * vertices.size();
+		VkBuffer stagingBuffer;
+		VkDeviceMemory stagingBufferMemory;
+
+		// HOST_COHERENT_BIT guarantees the driver completes the memory transfer operation for the VkMapMemory operation before the next VkQueueSubmit call
+		CreateBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, VK_SHARING_MODE_EXCLUSIVE, &stagingBuffer, &stagingBufferMemory);
+
+		void *data;
+		vkMapMemory(m_Device, stagingBufferMemory, 0, bufferSize, 0, &data);
+		memcpy(data, vertices.data(), static_cast<size_t>(bufferSize));
+		vkUnmapMemory(m_Device, stagingBufferMemory);
+
+		CreateBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, VK_SHARING_MODE_EXCLUSIVE, &m_VertexBuffer, &m_VertexBufferMemory);
+		
+		CopyBuffer(stagingBuffer, m_VertexBuffer, bufferSize);
+		vkDestroyBuffer(m_Device, stagingBuffer, nullptr);
+		vkFreeMemory(m_Device, stagingBufferMemory, nullptr);
+	}
+
+	uint32_t VulkanAPI::FindMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties)
+	{
+		VkPhysicalDeviceMemoryProperties memProperties;
+		vkGetPhysicalDeviceMemoryProperties(m_PhysicalDevice, &memProperties);
+
+		for (uint32_t i = 0; i < memProperties.memoryTypeCount; i++)
+		{
+			if ((typeFilter & (1 << i)) && (memProperties.memoryTypes[i].propertyFlags & properties) == properties)
+			{
+				return i;
+			}
+		}
+
+		ARC_ASSERT(false, "Vulkan: Failed to find suitable memory type for allocation");
+		return 0;
 	}
 
 	int VulkanAPI::ScorePhysicalDeviceSuitability(const VkPhysicalDevice &device)

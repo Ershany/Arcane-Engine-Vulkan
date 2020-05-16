@@ -110,12 +110,17 @@ namespace Arcane
 
 	void VulkanAPI::CreateBuffer(VkDeviceSize bufferSize, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkSharingMode sharingMode, VkBuffer *outBuffer, VkDeviceMemory *outBufferMemory)
 	{
+		DeviceQueueIndices queueIndices = FindDeviceQueueIndices(m_PhysicalDevice);
+		std::array<uint32_t, 2> allowedQueues{ queueIndices.graphicsQueue.value(), queueIndices.copyQueue.value() };
+
 		VkBufferCreateInfo bufferInfo = {};
 		bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
 		bufferInfo.pNext = nullptr;
 		bufferInfo.size = bufferSize;
 		bufferInfo.usage = usage;
 		bufferInfo.sharingMode = sharingMode;
+		bufferInfo.queueFamilyIndexCount = allowedQueues.size();
+		bufferInfo.pQueueFamilyIndices = allowedQueues.data();
 
 		VkResult result = vkCreateBuffer(m_Device, &bufferInfo, nullptr, outBuffer);
 		ARC_ASSERT(result == VK_SUCCESS, "Vulkan: Failed to create buffer");
@@ -141,7 +146,7 @@ namespace Arcane
 		allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
 		allocInfo.pNext = nullptr;
 		allocInfo.commandBufferCount = 1;
-		allocInfo.commandPool = m_GraphicsCommandPool;
+		allocInfo.commandPool = m_CopyCommandPool;
 		allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
 
 		VkCommandBuffer commandBuffer;
@@ -166,10 +171,10 @@ namespace Arcane
 		submitInfo.pNext = nullptr;
 		submitInfo.commandBufferCount = 1;
 		submitInfo.pCommandBuffers = &commandBuffer;
-		vkQueueSubmit(m_GraphicsQueue, 1, &submitInfo, VK_NULL_HANDLE);
-		vkQueueWaitIdle(m_GraphicsQueue);
+		vkQueueSubmit(m_CopyQueue, 1, &submitInfo, VK_NULL_HANDLE);
+		vkQueueWaitIdle(m_CopyQueue);
 
-		vkFreeCommandBuffers(m_Device, m_GraphicsCommandPool, 1, &commandBuffer);
+		vkFreeCommandBuffers(m_Device, m_CopyCommandPool, 1, &commandBuffer);
 	}
 
 	void VulkanAPI::Cleanup()
@@ -753,14 +758,14 @@ namespace Arcane
 		VkDeviceMemory stagingBufferMemory;
 
 		// HOST_COHERENT_BIT guarantees the driver completes the memory transfer operation for the VkMapMemory operation before the next VkQueueSubmit call
-		CreateBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, VK_SHARING_MODE_EXCLUSIVE, &stagingBuffer, &stagingBufferMemory);
+		CreateBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, VK_SHARING_MODE_CONCURRENT, &stagingBuffer, &stagingBufferMemory);
 
 		void *data;
 		vkMapMemory(m_Device, stagingBufferMemory, 0, bufferSize, 0, &data);
 		memcpy(data, vertices.data(), static_cast<size_t>(bufferSize));
 		vkUnmapMemory(m_Device, stagingBufferMemory);
 
-		CreateBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, VK_SHARING_MODE_EXCLUSIVE, &m_VertexBuffer, &m_VertexBufferMemory);
+		CreateBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, VK_SHARING_MODE_CONCURRENT, &m_VertexBuffer, &m_VertexBufferMemory);
 		
 		CopyBuffer(stagingBuffer, m_VertexBuffer, bufferSize);
 		vkDestroyBuffer(m_Device, stagingBuffer, nullptr);

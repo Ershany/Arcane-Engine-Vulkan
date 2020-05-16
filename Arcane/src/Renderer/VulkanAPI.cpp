@@ -119,7 +119,7 @@ namespace Arcane
 		bufferInfo.size = bufferSize;
 		bufferInfo.usage = usage;
 		bufferInfo.sharingMode = sharingMode;
-		bufferInfo.queueFamilyIndexCount = allowedQueues.size();
+		bufferInfo.queueFamilyIndexCount = static_cast<uint32_t>(allowedQueues.size());
 		bufferInfo.pQueueFamilyIndices = allowedQueues.data();
 
 		VkResult result = vkCreateBuffer(m_Device, &bufferInfo, nullptr, outBuffer);

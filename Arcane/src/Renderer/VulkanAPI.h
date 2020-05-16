@@ -96,6 +96,7 @@ namespace Arcane
 		void CreateSyncObjects();
 		void RecreateSwapchain();
 		void CreateVertexBuffer();
+		void CreateIndexBuffer();
 
 		uint32_t FindMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties);
 
@@ -153,13 +154,25 @@ namespace Arcane
 
 		bool m_FramebufferResized = false;
 
-		// Temp Stuff - Should be abstracted in a pass system
+		// Temp Stuff - Should be abstracted
 		VkPipeline m_GraphicsPipeline;
 		Shader *m_Shader;
 		VkRenderPass m_RenderPass;
 		VkPipelineLayout m_PipelineLayout;
 		VkDeviceMemory m_VertexBufferMemory;
 		VkBuffer m_VertexBuffer;
+		VkDeviceMemory m_IndexBufferMemory;
+		VkBuffer m_IndexBuffer;
+		const std::vector<Vertex> vertices =
+		{
+			{{0.0f, -0.5f}, {1.0f, 1.0f, 1.0f}},
+			{{0.5f, 0.5f}, {0.0f, 1.0f, 0.0f}},
+			{{-0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}}
+		};
+		const std::vector<uint16_t> indices =
+		{
+			0, 1, 2, 2, 3, 0
+		};
 
 		const std::vector<const char*> m_RequiredExtensions = {
 			VK_KHR_SWAPCHAIN_EXTENSION_NAME

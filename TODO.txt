@@ -1,0 +1,12 @@
+-Queue Indices should be saved for the chosen device
+-Abstract vertex buffer creation (and other buffer types, privatize the functions users do not need)
+-CreateShader function is empty in Vulkan API
+-After shader creation is abstracted we can delete the stages memory after the PSO is created (might not even want to do this, I am not sure yet)
+-Make sure the shader compiler is included in the project
+-Add ImGUI and delete from file dependency
+-When storing uniform buffers per swapchain buffer. We should only allocate one buffer and use disjoint ranges that way we do not have multiple discrete buffers (note: you only need duplicate data for types that are mutable and CPU accessible like uniform buffers. That way if multiple frames are in-flight you aren't modifying uniform memory for a previous frame. GBuffers only need one copy because it is only ever used by the GPU and only one thing will be reading and writing to it at the same time. You only need proper semaphores setup for GPU-GPU synchronization between submissions)
+-Look into push constants in order to push UBOs to the GPU more efficiently
+
+Long term:
+-Use the VulkanMemoryAllocator instead of calling vkAllocateMemory for each buffer/resource
+That way you will have a memory pool that you can use memory from, thus lowering the driver overhead of those frequent allocation calls

@@ -45,6 +45,8 @@ namespace Arcane
 		VkSemaphore signalSemaphores[] = { m_RenderFinishedSemaphore[m_CurrentFrame] };
 		VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT }; // We need to wait on the semaphore at the stage where we write to the colour attachment (after pixel shader)
 
+		UpdateUniformBuffer(imageIndex);
+
 		VkSubmitInfo submitInfo = {};
 		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 		submitInfo.waitSemaphoreCount = 1;
@@ -95,11 +97,15 @@ namespace Arcane
 		CreateSwapchain();
 		CreateSwapchainImageViews();
 		CreateRenderPass();
+		CreateDescriptorSetLayout();
 		CreateGraphicsPipeline();
 		CreateFramebuffers();
 		CreateCommandPool();
 		CreateVertexBuffer();
 		CreateIndexBuffer();
+		CreateUniformBuffers();
+		CreateDescriptorPool();
+		CreateDescriptorSets();
 		CreateCommandBuffers();
 		CreateSyncObjects();
 	}
@@ -120,8 +126,11 @@ namespace Arcane
 		bufferInfo.size = bufferSize;
 		bufferInfo.usage = usage;
 		bufferInfo.sharingMode = sharingMode;
-		bufferInfo.queueFamilyIndexCount = static_cast<uint32_t>(allowedQueues.size());
-		bufferInfo.pQueueFamilyIndices = allowedQueues.data();
+		if (sharingMode == VK_SHARING_MODE_CONCURRENT)
+		{
+			bufferInfo.queueFamilyIndexCount = static_cast<uint32_t>(allowedQueues.size());
+			bufferInfo.pQueueFamilyIndices = allowedQueues.data();
+		}
 
 		VkResult result = vkCreateBuffer(m_Device, &bufferInfo, nullptr, outBuffer);
 		ARC_ASSERT(result == VK_SUCCESS, "Vulkan: Failed to create buffer");
@@ -184,6 +193,8 @@ namespace Arcane
 
 		CleanupSwapchain();
 
+		vkDestroyDescriptorSetLayout(m_Device, m_DescriptorSetLayout, nullptr);
+
 		for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
 		{
 			vkDestroySemaphore(m_Device, m_ImageAvailableSemaphore[i], nullptr);
@@ -219,6 +230,14 @@ namespace Arcane
 		vkDestroyPipeline(m_Device, m_GraphicsPipeline, nullptr);
 		vkDestroyPipelineLayout(m_Device, m_PipelineLayout, nullptr);
 		vkDestroyRenderPass(m_Device, m_RenderPass, nullptr);
+
+		for (size_t i = 0; i < m_SwapchainImages.size(); i++)
+		{
+			vkDestroyBuffer(m_Device, m_UniformBuffers[i], nullptr);
+			vkFreeMemory(m_Device, m_UniformBuffersMemory[i], nullptr);
+		}
+
+		vkDestroyDescriptorPool(m_Device, m_DescriptorPool, nullptr);
 
 		for (size_t i = 0; i < m_SwapchainFramebuffers.size(); i++)
 			vkDestroyFramebuffer(m_Device, m_SwapchainFramebuffers[i], nullptr);
@@ -480,6 +499,25 @@ namespace Arcane
 		ARC_ASSERT(result == VK_SUCCESS, "Failed to create Vulkan RenderPass");
 	}
 
+	void VulkanAPI::CreateDescriptorSetLayout()
+	{
+		VkDescriptorSetLayoutBinding uboLayoutBinding = {};
+		uboLayoutBinding.binding = 0;
+		uboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+		uboLayoutBinding.descriptorCount = 1;
+		uboLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT; // Only used in the vertex shader
+		uboLayoutBinding.pImmutableSamplers = nullptr;
+
+		VkDescriptorSetLayoutCreateInfo layoutInfo = {};
+		layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+		layoutInfo.pNext = nullptr;
+		layoutInfo.bindingCount = 1;
+		layoutInfo.pBindings = &uboLayoutBinding;
+
+		VkResult result = vkCreateDescriptorSetLayout(m_Device, &layoutInfo, nullptr, &m_DescriptorSetLayout);
+		ARC_ASSERT(result == VK_SUCCESS, "Vulkan: Failed to create a descriptor set layout");
+	}
+
 	void VulkanAPI::CreateGraphicsPipeline()
 	{
 		m_Shader = new Shader(&m_Device, "res/Shaders/simple_vert.spv", "res/Shaders/simple_frag.spv");
@@ -525,7 +563,7 @@ namespace Arcane
 		rasterizationCreateInfo.polygonMode = VK_POLYGON_MODE_FILL; // TODO: This is where we can do wireframe
 		rasterizationCreateInfo.lineWidth = 1.0f;
 		rasterizationCreateInfo.cullMode = VK_CULL_MODE_BACK_BIT;
-		rasterizationCreateInfo.frontFace = VK_FRONT_FACE_CLOCKWISE;
+		rasterizationCreateInfo.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
 		rasterizationCreateInfo.depthBiasEnable = VK_FALSE;
 		rasterizationCreateInfo.depthBiasConstantFactor = 0.0f;
 		rasterizationCreateInfo.depthBiasClamp = 0.0f;
@@ -565,8 +603,8 @@ namespace Arcane
 
 		VkPipelineLayoutCreateInfo layoutCreateInfo = {};
 		layoutCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-		layoutCreateInfo.setLayoutCount = 0;
-		layoutCreateInfo.pSetLayouts = nullptr;
+		layoutCreateInfo.setLayoutCount = 1;
+		layoutCreateInfo.pSetLayouts = &m_DescriptorSetLayout;
 		layoutCreateInfo.pushConstantRangeCount = 0;
 		layoutCreateInfo.pPushConstantRanges = nullptr;
 
@@ -692,6 +730,7 @@ namespace Arcane
 			vkCmdBindPipeline(m_GraphicsCommandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, m_GraphicsPipeline);
 			vkCmdBindVertexBuffers(m_GraphicsCommandBuffers[i], 0, 1, vertexBuffers, offsets);
 			vkCmdBindIndexBuffer(m_GraphicsCommandBuffers[i], m_IndexBuffer, 0, VK_INDEX_TYPE_UINT16);
+			vkCmdBindDescriptorSets(m_GraphicsCommandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, m_PipelineLayout, 0, 1, &m_DescriptorSets[i], 0, nullptr);
 			vkCmdDrawIndexed(m_GraphicsCommandBuffers[i], static_cast<uint32_t>(indices.size()), 1, 0, 0, 0);
 			vkCmdEndRenderPass(m_GraphicsCommandBuffers[i]);
 			
@@ -745,6 +784,9 @@ namespace Arcane
 		CreateRenderPass();
 		CreateGraphicsPipeline();
 		CreateFramebuffers();
+		CreateUniformBuffers();
+		CreateDescriptorPool();
+		CreateDescriptorSets();
 		CreateCommandBuffers();
 	}
 
@@ -788,6 +830,92 @@ namespace Arcane
 		CopyBuffer(stagingBuffer, m_IndexBuffer, bufferSize);
 		vkDestroyBuffer(m_Device, stagingBuffer, nullptr);
 		vkFreeMemory(m_Device, stagingBufferMemory, nullptr);
+	}
+
+	void VulkanAPI::CreateUniformBuffers()
+	{
+		VkDeviceSize bufferSize = sizeof(StandardMaterialUBO);
+
+		m_UniformBuffers.resize(m_SwapchainImages.size());
+		m_UniformBuffersMemory.resize(m_SwapchainImages.size());
+
+		for (size_t i = 0; i < m_SwapchainImages.size(); i++)
+		{
+			CreateBuffer(bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, VK_SHARING_MODE_EXCLUSIVE, 
+				&m_UniformBuffers[i], &m_UniformBuffersMemory[i]);
+		}
+	}
+
+	void VulkanAPI::CreateDescriptorPool()
+	{
+		VkDescriptorPoolSize poolSize = {};
+		poolSize.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+		poolSize.descriptorCount = static_cast<uint32_t>(m_SwapchainImages.size());
+
+		VkDescriptorPoolCreateInfo poolInfo = {};
+		poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+		poolInfo.pNext = nullptr;
+		poolInfo.poolSizeCount = 1;
+		poolInfo.pPoolSizes = &poolSize;
+		poolInfo.maxSets = static_cast<uint32_t>(m_SwapchainImages.size());
+
+		VkResult result = vkCreateDescriptorPool(m_Device, &poolInfo, nullptr, &m_DescriptorPool);
+		ARC_ASSERT(result == VK_SUCCESS, "Vulkan: Failed to create descriptor pool");
+	}
+
+	void VulkanAPI::CreateDescriptorSets()
+	{
+		std::vector<VkDescriptorSetLayout> layouts(m_SwapchainImages.size(), m_DescriptorSetLayout);
+
+		VkDescriptorSetAllocateInfo allocateInfo = {};
+		allocateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+		allocateInfo.pNext = nullptr;
+		allocateInfo.descriptorPool = m_DescriptorPool;
+		allocateInfo.descriptorSetCount = static_cast<uint32_t>(m_SwapchainImages.size());
+		allocateInfo.pSetLayouts = layouts.data();
+
+		m_DescriptorSets.resize(m_SwapchainImages.size());
+		VkResult result = vkAllocateDescriptorSets(m_Device, &allocateInfo, m_DescriptorSets.data());
+		ARC_ASSERT(result == VK_SUCCESS, "Vulkan: Failed to allocate descriptor sets");
+
+		for (size_t i = 0; i < m_SwapchainImages.size(); i++)
+		{
+			VkDescriptorBufferInfo bufferInfo = {};
+			bufferInfo.buffer = m_UniformBuffers[i];
+			bufferInfo.offset = 0;
+			bufferInfo.range = sizeof(StandardMaterialUBO);
+
+			VkWriteDescriptorSet descriptorWrite = {};
+			descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+			descriptorWrite.dstSet = m_DescriptorSets[i];
+			descriptorWrite.dstBinding = 0;
+			descriptorWrite.dstArrayElement = 0;
+			descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+			descriptorWrite.descriptorCount = 1;
+			descriptorWrite.pBufferInfo = &bufferInfo;
+			descriptorWrite.pImageInfo = nullptr;
+			descriptorWrite.pTexelBufferView = nullptr;
+
+			vkUpdateDescriptorSets(m_Device, 1, &descriptorWrite, 0, nullptr);
+		}
+	}
+
+	void VulkanAPI::UpdateUniformBuffer(uint32_t currSwapchainImageIndex)
+	{
+		static auto startTime = std::chrono::high_resolution_clock::now();
+		auto currentTime = std::chrono::high_resolution_clock::now();
+		float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
+
+		StandardMaterialUBO standardMatUBO;
+		standardMatUBO.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+		standardMatUBO.view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+		standardMatUBO.projection = glm::perspective(glm::radians(45.0f), (float)m_SwapchainExtent.width / (float)m_SwapchainExtent.height, 0.1f, 1000.0f);
+		standardMatUBO.projection[1][1] *= -1.0f; // Y-Coord inverted in Vulkan when compared to OpenGL
+
+		void *data;
+		vkMapMemory(m_Device, m_UniformBuffersMemory[currSwapchainImageIndex], 0, sizeof(standardMatUBO), 0, &data);
+		memcpy(data, &standardMatUBO, sizeof(standardMatUBO));
+		vkUnmapMemory(m_Device, m_UniformBuffersMemory[currSwapchainImageIndex]);
 	}
 
 	uint32_t VulkanAPI::FindMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties)

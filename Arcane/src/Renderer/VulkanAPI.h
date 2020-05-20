@@ -61,6 +61,13 @@ namespace Arcane
 			return attributeDescription;
 		}
 	};
+	// Temporary (alignas makes sure the variable is N byte aligned, should mimic the struct packing in the shaders)
+	struct StandardMaterialUBO
+	{
+		alignas(16) glm::mat4 model;
+		alignas(16) glm::mat4 view;
+		alignas(16) glm::mat4 projection;
+	};
 
 	class VulkanAPI
 	{
@@ -89,6 +96,7 @@ namespace Arcane
 		void CreateSwapchain();
 		void CreateSwapchainImageViews();
 		void CreateRenderPass();
+		void CreateDescriptorSetLayout();
 		void CreateGraphicsPipeline();
 		void CreateFramebuffers();
 		void CreateCommandPool();
@@ -97,6 +105,10 @@ namespace Arcane
 		void RecreateSwapchain();
 		void CreateVertexBuffer();
 		void CreateIndexBuffer();
+		void CreateUniformBuffers();
+		void CreateDescriptorPool();
+		void CreateDescriptorSets();
+		void UpdateUniformBuffer(uint32_t currSwapchainImageIndex);
 
 		uint32_t FindMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties);
 
@@ -155,20 +167,25 @@ namespace Arcane
 		bool m_FramebufferResized = false;
 
 		// Temp Stuff - Should be abstracted
+		VkDescriptorPool m_DescriptorPool;
+		std::vector<VkDescriptorSet> m_DescriptorSets;
+		VkDescriptorSetLayout m_DescriptorSetLayout;
+		VkPipelineLayout m_PipelineLayout;
 		VkPipeline m_GraphicsPipeline;
 		Shader *m_Shader;
 		VkRenderPass m_RenderPass;
-		VkPipelineLayout m_PipelineLayout;
 		VkDeviceMemory m_VertexBufferMemory;
 		VkBuffer m_VertexBuffer;
 		VkDeviceMemory m_IndexBufferMemory;
 		VkBuffer m_IndexBuffer;
+		std::vector<VkBuffer> m_UniformBuffers;
+		std::vector<VkDeviceMemory> m_UniformBuffersMemory;
 		const std::vector<Vertex> vertices =
 		{
-			{{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}},
-			{{0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}},
-			{{0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}},
-			{{-0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}}
+			{{-0.5f, -0.5f}, {1.0f, 0.6f, 0.0f}},
+			{{0.5f, -0.5f}, {0.5f, 0.0f, 0.5f}},
+			{{0.5f, 0.5f}, {0.0f, 0.5f, 1.0f}},
+			{{-0.5f, 0.5f}, {0.0f, 1.0f, 0.0f}}
 		};
 		const std::vector<uint16_t> indices =
 		{

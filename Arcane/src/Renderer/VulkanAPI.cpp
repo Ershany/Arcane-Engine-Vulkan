@@ -171,7 +171,6 @@ namespace Arcane
 		imageInfo.tiling = tiling;
 		imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 		imageInfo.usage = usage;
-		imageInfo.usage = sharingMode;
 		imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
 		imageInfo.flags = 0;
 		if (sharingMode == VK_SHARING_MODE_CONCURRENT)

@@ -31,6 +31,7 @@ namespace Arcane
 	{
 		glm::vec2 pos;
 		glm::vec3 colour;
+		glm::vec2 uv;
 
 		// Describes vertex buffers
 		static VkVertexInputBindingDescription GetBindingDescription()
@@ -44,9 +45,9 @@ namespace Arcane
 		}
 
 		// Describes attributes, allows for different variable locations to be defined in different vertex buffers
-		static std::array<VkVertexInputAttributeDescription, 2> GetAttributeDescription()
+		static std::array<VkVertexInputAttributeDescription, 3> GetAttributeDescription()
 		{
-			std::array<VkVertexInputAttributeDescription, 2> attributeDescription{};
+			std::array<VkVertexInputAttributeDescription, 3> attributeDescription{};
 			
 			attributeDescription[0].binding = 0;
 			attributeDescription[0].location = 0;
@@ -57,6 +58,11 @@ namespace Arcane
 			attributeDescription[1].location = 1;
 			attributeDescription[1].offset = offsetof(Vertex, colour);
 			attributeDescription[1].format = VK_FORMAT_R32G32B32_SFLOAT;
+
+			attributeDescription[2].binding = 0;
+			attributeDescription[2].location = 2;
+			attributeDescription[2].offset = offsetof(Vertex, uv);
+			attributeDescription[2].format = VK_FORMAT_R32G32_SFLOAT;
 
 			return attributeDescription;
 		}
@@ -113,11 +119,14 @@ namespace Arcane
 		void CreateDescriptorSets();
 		void UpdateUniformBuffer(uint32_t currSwapchainImageIndex);
 		void CreateTextures();
+		void CreateTextureImageViews();
+		void CreateTextureSamplers();
 
 		VkCommandBuffer BeginSingleUseCommands(VkCommandPool pool);
 		void EndSingleUseCommands(VkCommandBuffer commandBuffer, VkCommandPool pool, VkQueue queue);
 		void TransitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout);
 
+		VkImageView CreateImageView(VkImage image, VkFormat format);
 		uint32_t FindMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties);
 
 		int ScorePhysicalDeviceSuitability(const VkPhysicalDevice &device);
@@ -190,12 +199,13 @@ namespace Arcane
 		std::vector<VkDeviceMemory> m_UniformBuffersMemory;
 		VkImage m_TextureImage;
 		VkDeviceMemory m_TextureImageMemory;
-		const std::vector<Vertex> vertices =
-		{
-			{{-0.5f, -0.5f}, {1.0f, 0.6f, 0.0f}},
-			{{0.5f, -0.5f}, {0.5f, 0.0f, 0.5f}},
-			{{0.5f, 0.5f}, {0.0f, 0.5f, 1.0f}},
-			{{-0.5f, 0.5f}, {0.0f, 1.0f, 0.0f}}
+		VkImageView m_TextureImageView;
+		VkSampler m_GenericTextureSampler;
+		const std::vector<Vertex> vertices = {
+			{{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}, {0.0f, 1.0f}},
+			{{0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}, {1.0f, 1.0f}},
+			{{0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}, {1.0f, 0.0f}},
+			{{-0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}, {0.0f, 0.0f}}
 		};
 		const std::vector<uint16_t> indices =
 		{

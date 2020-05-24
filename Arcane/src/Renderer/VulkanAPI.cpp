@@ -104,6 +104,8 @@ namespace Arcane
 		CreateFramebuffers();
 		CreateCommandPool();
 		CreateTextures();
+		CreateTextureImageViews();
+		CreateTextureSamplers();
 		CreateVertexBuffer();
 		CreateIndexBuffer();
 		CreateUniformBuffers();
@@ -247,6 +249,8 @@ namespace Arcane
 		delete m_Shader;
 		vkDestroyImage(m_Device, m_TextureImage, nullptr);
 		vkFreeMemory(m_Device, m_TextureImageMemory, nullptr);
+		vkDestroyImageView(m_Device, m_TextureImageView, nullptr);
+		vkDestroySampler(m_Device, m_GenericTextureSampler, nullptr);
 
 		vkDestroyBuffer(m_Device, m_VertexBuffer, nullptr);
 		vkFreeMemory(m_Device, m_VertexBufferMemory, nullptr);
@@ -377,7 +381,10 @@ namespace Arcane
 			queueCreateInfo[i].queueCount = 1;
 			queueCreateInfo[i].pQueuePriorities = &queuePriority;
 		}
+
 		VkPhysicalDeviceFeatures deviceFeatures = {};
+		deviceFeatures.samplerAnisotropy = VK_TRUE;
+
 		VkDeviceCreateInfo deviceCreateInfo = {};
 		deviceCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
 		deviceCreateInfo.pQueueCreateInfos = queueCreateInfo.data();
@@ -470,23 +477,7 @@ namespace Arcane
 
 		for (size_t i = 0; i < m_SwapchainImageViews.size(); i++)
 		{
-			VkImageViewCreateInfo createInfo = {};
-			createInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-			createInfo.image = m_SwapchainImages[i];
-			createInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
-			createInfo.format = m_SwapchainImageFormat;
-			createInfo.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
-			createInfo.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
-			createInfo.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
-			createInfo.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
-			createInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-			createInfo.subresourceRange.baseMipLevel = 0;
-			createInfo.subresourceRange.levelCount = 1;
-			createInfo.subresourceRange.baseArrayLayer = 0;
-			createInfo.subresourceRange.layerCount = 1;
-
-			VkResult result = vkCreateImageView(m_Device, &createInfo, nullptr, &m_SwapchainImageViews[i]);
-			ARC_ASSERT(result == VK_SUCCESS, "Failed to create image views for the swap chain images");
+			m_SwapchainImageViews[i] = CreateImageView(m_SwapchainImages[i], m_SwapchainImageFormat);
 		}
 	}
 
@@ -550,11 +541,19 @@ namespace Arcane
 		uboLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT; // What shader stages this resource will be used in
 		uboLayoutBinding.pImmutableSamplers = nullptr;
 
+		VkDescriptorSetLayoutBinding samplerLayoutBinding = {};
+		samplerLayoutBinding.binding = 1;
+		samplerLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+		samplerLayoutBinding.descriptorCount = 1; // number of resources with this layout binding (for non-arrays = 1)
+		samplerLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT; // What shader stages this resource will be used in
+		samplerLayoutBinding.pImmutableSamplers = nullptr;
+
+		std::array<VkDescriptorSetLayoutBinding, 2> bindings = { uboLayoutBinding, samplerLayoutBinding };
 		VkDescriptorSetLayoutCreateInfo layoutInfo = {};
 		layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
 		layoutInfo.pNext = nullptr;
-		layoutInfo.bindingCount = 1;
-		layoutInfo.pBindings = &uboLayoutBinding;
+		layoutInfo.bindingCount = static_cast<uint32_t>(bindings.size());
+		layoutInfo.pBindings = bindings.data();
 
 		VkResult result = vkCreateDescriptorSetLayout(m_Device, &layoutInfo, nullptr, &m_DescriptorSetLayout);
 		ARC_ASSERT(result == VK_SUCCESS, "Vulkan: Failed to create a descriptor set layout");
@@ -890,15 +889,17 @@ namespace Arcane
 
 	void VulkanAPI::CreateDescriptorPool()
 	{
-		VkDescriptorPoolSize poolSize = {};
-		poolSize.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-		poolSize.descriptorCount = static_cast<uint32_t>(m_SwapchainImages.size());
+		std::array<VkDescriptorPoolSize, 2> poolSizes = {};
+		poolSizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+		poolSizes[0].descriptorCount = static_cast<uint32_t>(m_SwapchainImages.size());
+		poolSizes[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+		poolSizes[1].descriptorCount = static_cast<uint32_t>(m_SwapchainImages.size());
 
 		VkDescriptorPoolCreateInfo poolInfo = {};
 		poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
 		poolInfo.pNext = nullptr;
-		poolInfo.poolSizeCount = 1;
-		poolInfo.pPoolSizes = &poolSize;
+		poolInfo.poolSizeCount = static_cast<uint32_t>(poolSizes.size());
+		poolInfo.pPoolSizes = poolSizes.data();
 		poolInfo.maxSets = static_cast<uint32_t>(m_SwapchainImages.size());
 
 		VkResult result = vkCreateDescriptorPool(m_Device, &poolInfo, nullptr, &m_DescriptorPool);
@@ -927,18 +928,33 @@ namespace Arcane
 			bufferInfo.offset = 0;
 			bufferInfo.range = sizeof(StandardMaterialUBO);
 
-			VkWriteDescriptorSet descriptorWrite = {};
-			descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-			descriptorWrite.dstSet = m_DescriptorSets[i];
-			descriptorWrite.dstBinding = 0;
-			descriptorWrite.dstArrayElement = 0;
-			descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-			descriptorWrite.descriptorCount = 1;
-			descriptorWrite.pBufferInfo = &bufferInfo;
-			descriptorWrite.pImageInfo = nullptr;
-			descriptorWrite.pTexelBufferView = nullptr;
+			VkDescriptorImageInfo imageInfo = {};
+			imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+			imageInfo.imageView = m_TextureImageView;
+			imageInfo.sampler = m_GenericTextureSampler;
 
-			vkUpdateDescriptorSets(m_Device, 1, &descriptorWrite, 0, nullptr);
+			std::array<VkWriteDescriptorSet, 2> descriptorWrites = {};
+			descriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+			descriptorWrites[0].dstSet = m_DescriptorSets[i];
+			descriptorWrites[0].dstBinding = 0;
+			descriptorWrites[0].dstArrayElement = 0;
+			descriptorWrites[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+			descriptorWrites[0].descriptorCount = 1;
+			descriptorWrites[0].pBufferInfo = &bufferInfo;
+			descriptorWrites[0].pImageInfo = nullptr;
+			descriptorWrites[0].pTexelBufferView = nullptr;
+
+			descriptorWrites[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+			descriptorWrites[1].dstSet = m_DescriptorSets[i];
+			descriptorWrites[1].dstBinding = 1;
+			descriptorWrites[1].dstArrayElement = 0;
+			descriptorWrites[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+			descriptorWrites[1].descriptorCount = 1;
+			descriptorWrites[1].pBufferInfo = nullptr;
+			descriptorWrites[1].pImageInfo = &imageInfo;
+			descriptorWrites[1].pTexelBufferView = nullptr;
+
+			vkUpdateDescriptorSets(m_Device, static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, nullptr);
 		}
 	}
 
@@ -983,7 +999,7 @@ namespace Arcane
 		CreateImage2D(texWidth, texHeight, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
 						VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, VK_SHARING_MODE_CONCURRENT, &m_TextureImage, &m_TextureImageMemory);
 
-		// TODO: These should all be recorded by a single command buffer, instead of each function synchonously submitting its own command buffer
+		// TODO: These should all be recorded by a single command buffer, instead of each function synchronously submitting its own command buffer
 		// Make a function SetupCommandBuffer() & FlushSetupCommandBuffer() or something and record all of these actions into one command buffer
 		TransitionImageLayout(m_TextureImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL); // CreateImage2D sets the layout to VK_IMAGE_LAYOUT_UNDEFINED
 		CopyBufferToImage(stagingBuffer, m_TextureImage, static_cast<uint32_t>(texWidth), static_cast<uint32_t>(texHeight));
@@ -991,6 +1007,36 @@ namespace Arcane
 
 		vkDestroyBuffer(m_Device, stagingBuffer, nullptr);
 		vkFreeMemory(m_Device, stagingMemory, nullptr);
+	}
+
+	void VulkanAPI::CreateTextureImageViews()
+	{
+		m_TextureImageView = CreateImageView(m_TextureImage, VK_FORMAT_R8G8B8A8_SRGB);
+	}
+
+	void VulkanAPI::CreateTextureSamplers()
+	{
+		VkSamplerCreateInfo samplerInfo = {};
+		samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+		samplerInfo.pNext = nullptr;
+		samplerInfo.magFilter = VK_FILTER_LINEAR;
+		samplerInfo.minFilter = VK_FILTER_LINEAR;
+		samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+		samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+		samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+		samplerInfo.anisotropyEnable = VK_TRUE;
+		samplerInfo.maxAnisotropy = 16.0f;
+		samplerInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
+		samplerInfo.unnormalizedCoordinates = VK_FALSE;
+		samplerInfo.compareEnable = VK_FALSE; // Can be true for PCF on shadow maps
+		samplerInfo.compareOp = VK_COMPARE_OP_ALWAYS;
+		samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+		samplerInfo.mipLodBias = 0.0f;
+		samplerInfo.minLod = 0.0f;
+		samplerInfo.maxLod = 0.0f;
+
+		VkResult result = vkCreateSampler(m_Device, &samplerInfo, nullptr, &m_GenericTextureSampler);
+		ARC_ASSERT(result == VK_SUCCESS, "Vulkan: Failed to create texture sampler");
 	}
 
 	VkCommandBuffer VulkanAPI::BeginSingleUseCommands(VkCommandPool pool)
@@ -1081,6 +1127,30 @@ namespace Arcane
 		EndSingleUseCommands(commandBuffer, m_GraphicsCommandPool, m_GraphicsQueue);
 	}
 
+	VkImageView VulkanAPI::CreateImageView(VkImage image, VkFormat format)
+	{
+		VkImageViewCreateInfo createInfo = {};
+		createInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+		createInfo.image = image;
+		createInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+		createInfo.format = format;
+		createInfo.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
+		createInfo.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
+		createInfo.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
+		createInfo.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
+		createInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+		createInfo.subresourceRange.baseMipLevel = 0;
+		createInfo.subresourceRange.levelCount = 1;
+		createInfo.subresourceRange.baseArrayLayer = 0;
+		createInfo.subresourceRange.layerCount = 1;
+
+		VkImageView imageView;
+		VkResult result = vkCreateImageView(m_Device, &createInfo, nullptr, &imageView);
+		ARC_ASSERT(result == VK_SUCCESS, "Vulkan: Failed to create image view");
+
+		return imageView;
+	}
+
 	uint32_t VulkanAPI::FindMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties)
 	{
 		VkPhysicalDeviceMemoryProperties memProperties;
@@ -1114,6 +1184,8 @@ namespace Arcane
 
 		// These are things that are required to be supported
 		if (!queueIndices.IsSuitable())
+			return -1;
+		if (!deviceFeatures.samplerAnisotropy)
 			return -1;
 		if (!CheckPhysicalDeviceExtensionSupport(device))
 			return -1;

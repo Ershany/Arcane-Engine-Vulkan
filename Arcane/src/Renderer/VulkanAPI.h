@@ -81,7 +81,10 @@ namespace Arcane
 		// Helpers
 		void CreateShader(const std::string &vertBinaryPath, const std::string &fragBinaryPath);
 		void CreateBuffer(VkDeviceSize bufferSize, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkSharingMode sharingMode, VkBuffer *outBuffer, VkDeviceMemory *outBufferMemory);
+		void CreateImage2D(uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkSharingMode sharingMode,
+							VkImage *outImage, VkDeviceMemory *outTextureMemory);
 		void CopyBuffer(VkBuffer srcBuffer, VkBuffer destBuffer, VkDeviceSize size);
+		void CopyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height);
 
 		// Setters
 		inline void NotifyWindowResized() { m_FramebufferResized = true; }
@@ -109,6 +112,11 @@ namespace Arcane
 		void CreateDescriptorPool();
 		void CreateDescriptorSets();
 		void UpdateUniformBuffer(uint32_t currSwapchainImageIndex);
+		void CreateTextures();
+
+		VkCommandBuffer BeginSingleUseCommands(VkCommandPool pool);
+		void EndSingleUseCommands(VkCommandBuffer commandBuffer, VkCommandPool pool, VkQueue queue);
+		void TransitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout);
 
 		uint32_t FindMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties);
 
@@ -180,6 +188,8 @@ namespace Arcane
 		VkBuffer m_IndexBuffer;
 		std::vector<VkBuffer> m_UniformBuffers;
 		std::vector<VkDeviceMemory> m_UniformBuffersMemory;
+		VkImage m_TextureImage;
+		VkDeviceMemory m_TextureImageMemory;
 		const std::vector<Vertex> vertices =
 		{
 			{{-0.5f, -0.5f}, {1.0f, 0.6f, 0.0f}},

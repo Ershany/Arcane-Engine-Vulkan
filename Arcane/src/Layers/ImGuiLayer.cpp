@@ -1,7 +1,7 @@
 #include "arcpch.h"
 #include "ImGuiLayer.h"
 
-#include "Vendor/ImGui/imgui.h"
+//#include "Vendor/ImGui/imgui.h"
 
 namespace Arcane
 {
@@ -18,6 +18,7 @@ namespace Arcane
 
 	void ImGuiLayer::OnAttach()
 	{
+		/*
 		ImGui::CreateContext();
 		ImGui::StyleColorsDark();
 
@@ -50,6 +51,7 @@ namespace Arcane
 		io.KeyMap[ImGuiKey_Z] = GLFW_KEY_Z;
 
 		//ImGui_ImplVulkan_Init();
+		*/
 	}
 
 	void ImGuiLayer::OnDetach()

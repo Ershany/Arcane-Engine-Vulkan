@@ -4,8 +4,9 @@
 -After shader creation is abstracted we can delete the stages memory after the PSO is created (might not even want to do this, I am not sure yet)
 -Make sure the shader compiler is included in the project
 -Add ImGUI and delete from file dependency
--When storing uniform buffers per swapchain buffer. We should only allocate one buffer and use disjoint ranges that way we do not have multiple discrete buffers (note: you only need duplicate data for types that are mutable and CPU accessible like uniform buffers. That way if multiple frames are in-flight you aren't modifying uniform memory for a previous frame. GBuffers only need one copy because it is only ever used by the GPU and only one thing will be reading and writing to it at the same time. You only need proper semaphores setup for GPU-GPU synchronization between submissions)
+-When storing uniform buffers per swapchain buffer. We should only allocate one buffer and use disjoint ranges that way we do not have multiple discrete buffers (note: you only need duplicate data for types that are mutable and CPU accessible like uniform buffers. That way if multiple frames are in-flight you aren't modifying uniform memory for a previous frame. GBuffers only need one copy because it is only ever used by the GPU and only one thing will be reading and writing to it at the same time and they will be synced thanks to semaphores and other GPU sync objects already)
 -Look into push constants in order to push UBOs to the GPU more efficiently
+-When creating an image by creating a buffer and an image and changing the layout and copying to it and then changing the layout to an optimal read-only format. All of these steps should be done in a single command buffer instead of each of them synchronously making their own command buffer and flushing (vkQueueWaitIdle calls)
 
 Long term:
 -Use the VulkanMemoryAllocator instead of calling vkAllocateMemory for each buffer/resource

@@ -148,4 +148,9 @@
     <None Include="res\Shaders\simple.vert" />
     <None Include="res\Shaders\simple.frag" />
   </ItemGroup>
+  <ItemGroup>
+    <Image Include="res\Textures\rockstar.png">
+      <Filter>Resource Files</Filter>
+    </Image>
+  </ItemGroup>
 </Project>

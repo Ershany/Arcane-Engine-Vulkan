@@ -152,6 +152,8 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="src\Graphics\Mesh\Material.cpp" />
+    <ClCompile Include="src\Graphics\Renderer\VulkanAPI.cpp" />
     <ClCompile Include="src\Layers\ImGuiLayer.cpp" />
     <ClCompile Include="src\Core\Layer.cpp" />
     <ClCompile Include="main.cpp" />
@@ -167,8 +169,7 @@
       <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Release|x64'">arcpch.h</PrecompiledHeaderFile>
       <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Final|x64'">arcpch.h</PrecompiledHeaderFile>
     </ClCompile>
-    <ClCompile Include="src\Renderer\VulkanAPI.cpp" />
-    <ClCompile Include="src\Renderer\Shader.cpp" />
+    <ClCompile Include="src\Graphics\Shader.cpp" />
     <ClCompile Include="src\Core\Window.cpp" />
     <ClCompile Include="src\Core\Timer.cpp" />
     <ClCompile Include="src\Vendor\ImGui\imgui.cpp">
@@ -198,6 +199,7 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="src\Graphics\Mesh\Material.h" />
     <ClInclude Include="src\Layers\ImGuiLayer.h" />
     <ClInclude Include="src\Core\Layer.h" />
     <ClInclude Include="src\Core\LayerStack.h" />
@@ -212,8 +214,8 @@
     <ClInclude Include="src\Events\ApplicationEvent.h" />
     <ClInclude Include="src\Events\KeyEvent.h" />
     <ClInclude Include="src\Events\MouseEvent.h" />
-    <ClInclude Include="src\Renderer\VulkanAPI.h" />
-    <ClInclude Include="src\Renderer\Shader.h" />
+    <ClInclude Include="src\Graphics\Renderer\VulkanAPI.h" />
+    <ClInclude Include="src\Graphics\Shader.h" />
     <ClInclude Include="src\Core\Window.h" />
     <ClInclude Include="src\Core\Timer.h" />
     <ClInclude Include="src\Vendor\ImGui\imconfig.h" />

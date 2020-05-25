@@ -8,7 +8,7 @@
 #include "Core/FileUtils.h"
 #include "Core/Layer.h"
 #include "Core/Logger.h"
-#include "Renderer/VulkanAPI.h"
+#include "Graphics/Renderer/VulkanAPI.h"
 
 namespace Arcane
 {

@@ -6,7 +6,7 @@
 #include "Defs.h"
 #include "Core/Window.h"
 #include "Core/FileUtils.h"
-#include "Renderer/Shader.h"
+#include "Graphics/Shader.h"
 
 namespace Arcane
 {
@@ -116,15 +116,14 @@ namespace Arcane
 		CreateSyncObjects();
 	}
 
-	void VulkanAPI::CreateShader(const std::string & vertBinaryPath, const std::string & fragBinaryPath)
+	Shader* VulkanAPI::CreateShader(const std::string & vertBinaryPath, const std::string & fragBinaryPath)
 	{
-		
+		return new Shader(m_Device, vertBinaryPath, fragBinaryPath);
 	}
 
 	void VulkanAPI::CreateBuffer(VkDeviceSize bufferSize, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkSharingMode sharingMode, VkBuffer *outBuffer, VkDeviceMemory *outBufferMemory)
 	{
-		DeviceQueueIndices queueIndices = FindDeviceQueueIndices(m_PhysicalDevice);
-		std::array<uint32_t, 2> allowedQueues{ queueIndices.graphicsQueue.value(), queueIndices.copyQueue.value() };
+		std::array<uint32_t, 2> allowedQueues{ m_DeviceQueueIndices.graphicsQueue.value(), m_DeviceQueueIndices.copyQueue.value() };
 
 		VkBufferCreateInfo bufferInfo = {};
 		bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
@@ -158,8 +157,7 @@ namespace Arcane
 
 	void VulkanAPI::CreateImage2D(uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkSharingMode sharingMode, VkImage *outImage, VkDeviceMemory *outTextureMemory)
 	{
-		DeviceQueueIndices queueIndices = FindDeviceQueueIndices(m_PhysicalDevice);
-		std::array<uint32_t, 2> allowedQueues{ queueIndices.graphicsQueue.value(), queueIndices.copyQueue.value() };
+		std::array<uint32_t, 2> allowedQueues{ m_DeviceQueueIndices.graphicsQueue.value(), m_DeviceQueueIndices.copyQueue.value() };
 
 		VkImageCreateInfo imageInfo = {};
 		imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
@@ -368,13 +366,15 @@ namespace Arcane
 			m_PhysicalDevice = *bestDevice;
 
 		ARC_ASSERT(m_PhysicalDevice != VK_NULL_HANDLE, "Failed to find a suitable GPU that supports the extensions required");
+
+		// Finish setting up information after a physical device is chosen
+		m_DeviceQueueIndices = FindDeviceQueueIndices(m_PhysicalDevice);
 	}
 
 	void VulkanAPI::CreateLogicalDeviceAndQueues()
 	{
-		DeviceQueueIndices indices = FindDeviceQueueIndices(m_PhysicalDevice);
 		std::array<VkDeviceQueueCreateInfo, 3> queueCreateInfo;
-		std::array<uint32_t, 3> queueIndices = { indices.graphicsQueue.value(), indices.computeQueue.value(), indices.copyQueue.value() }; // Do not need present queue because it overlaps with one of these queues
+		std::array<uint32_t, 3> queueIndices = { m_DeviceQueueIndices.graphicsQueue.value(), m_DeviceQueueIndices.computeQueue.value(), m_DeviceQueueIndices.copyQueue.value() }; // Do not need present queue because it overlaps with one of these queues
 		float queuePriority = 1.0f;
 
 		for (size_t i = 0; i < queueCreateInfo.size(); i++)
@@ -410,10 +410,10 @@ namespace Arcane
 		VkResult result = vkCreateDevice(m_PhysicalDevice, &deviceCreateInfo, nullptr, &m_Device);
 		ARC_ASSERT(result == VK_SUCCESS, "Failed to create logical device");
 
-		vkGetDeviceQueue(m_Device, indices.graphicsQueue.value(), 0, &m_GraphicsQueue);
-		vkGetDeviceQueue(m_Device, indices.computeQueue.value(), 0, &m_ComputeQueue);
-		vkGetDeviceQueue(m_Device, indices.copyQueue.value(), 0, &m_CopyQueue);
-		vkGetDeviceQueue(m_Device, indices.presentQueue.value(), 0, &m_PresentQueue); // Present queue will be one of the existing queues
+		vkGetDeviceQueue(m_Device, m_DeviceQueueIndices.graphicsQueue.value(), 0, &m_GraphicsQueue);
+		vkGetDeviceQueue(m_Device, m_DeviceQueueIndices.computeQueue.value(), 0, &m_ComputeQueue);
+		vkGetDeviceQueue(m_Device, m_DeviceQueueIndices.copyQueue.value(), 0, &m_CopyQueue);
+		vkGetDeviceQueue(m_Device, m_DeviceQueueIndices.presentQueue.value(), 0, &m_PresentQueue); // Present queue will be one of the existing queues
 	}
 
 	void VulkanAPI::CreateSwapchain()
@@ -446,13 +446,11 @@ namespace Arcane
 		createInfo.imageArrayLayers = 1;
 		createInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT; // VK_IMAGE_USAGE_TRANSFER_DST_BIT - TODO: Should be this when we render offscreen first and transfer over with post processing
 
-		DeviceQueueIndices indices = FindDeviceQueueIndices(m_PhysicalDevice);
-		uint32_t queueIndices[] = { indices.graphicsQueue.value(), indices.presentQueue.value() };
+		uint32_t queueIndices[] = { m_DeviceQueueIndices.graphicsQueue.value(), m_DeviceQueueIndices.presentQueue.value() };
 
 		// The graphics queue and presentation need access to the same images, and if they are in different queues we need to set the image to be concurrent with the two queues
-		if (indices.graphicsQueue != indices.presentQueue)
+		if (m_DeviceQueueIndices.graphicsQueue != m_DeviceQueueIndices.presentQueue)
 		{
-			// TODO: Could manually handle the sharing but for now with current knowledge, this will do
 			createInfo.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
 			createInfo.queueFamilyIndexCount = 2;
 			createInfo.pQueueFamilyIndices = queueIndices;
@@ -591,7 +589,7 @@ namespace Arcane
 
 	void VulkanAPI::CreateGraphicsPipeline()
 	{
-		m_Shader = new Shader(&m_Device, "res/Shaders/simple_vert.spv", "res/Shaders/simple_frag.spv");
+		m_Shader = CreateShader("res/Shaders/simple_vert.spv", "res/Shaders/simple_frag.spv");
 		auto bindingDescription = Vertex::GetBindingDescription();
 		auto attributeDescription = Vertex::GetAttributeDescription();
 
@@ -634,7 +632,7 @@ namespace Arcane
 		rasterizationCreateInfo.polygonMode = VK_POLYGON_MODE_FILL; // TODO: This is where we can do wireframe
 		rasterizationCreateInfo.lineWidth = 1.0f;
 		rasterizationCreateInfo.cullMode = VK_CULL_MODE_BACK_BIT;
-		rasterizationCreateInfo.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
+		rasterizationCreateInfo.frontFace = VK_FRONT_FACE_CLOCKWISE;
 		rasterizationCreateInfo.depthBiasEnable = VK_FALSE;
 		rasterizationCreateInfo.depthBiasConstantFactor = 0.0f;
 		rasterizationCreateInfo.depthBiasClamp = 0.0f;
@@ -742,12 +740,10 @@ namespace Arcane
 
 	void VulkanAPI::CreateCommandPool()
 	{
-		DeviceQueueIndices queueIndices = FindDeviceQueueIndices(m_PhysicalDevice);
-
 		VkCommandPoolCreateInfo graphicsCommandPoolInfo = {};
 		graphicsCommandPoolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
 		graphicsCommandPoolInfo.pNext = nullptr;
-		graphicsCommandPoolInfo.queueFamilyIndex = queueIndices.graphicsQueue.value();
+		graphicsCommandPoolInfo.queueFamilyIndex = m_DeviceQueueIndices.graphicsQueue.value();
 		graphicsCommandPoolInfo.flags = 0;
 
 		VkResult result = vkCreateCommandPool(m_Device, &graphicsCommandPoolInfo, nullptr, &m_GraphicsCommandPool);
@@ -756,7 +752,7 @@ namespace Arcane
 		VkCommandPoolCreateInfo copyCommandPoolInfo = {};
 		copyCommandPoolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
 		copyCommandPoolInfo.pNext = nullptr;
-		copyCommandPoolInfo.queueFamilyIndex = queueIndices.copyQueue.value();
+		copyCommandPoolInfo.queueFamilyIndex = m_DeviceQueueIndices.copyQueue.value();
 		copyCommandPoolInfo.flags = 0;
 
 		result = vkCreateCommandPool(m_Device, &copyCommandPoolInfo, nullptr, &m_CopyCommandPool);
@@ -1260,12 +1256,12 @@ namespace Arcane
 		return score;
 	}
 
-	bool VulkanAPI::CheckPhysicalDeviceExtensionSupport(const VkPhysicalDevice & device)
+	bool VulkanAPI::CheckPhysicalDeviceExtensionSupport(const VkPhysicalDevice & physicalDevice)
 	{
 		uint32_t extensionCount;
-		vkEnumerateDeviceExtensionProperties(device, nullptr, &extensionCount, nullptr);
+		vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &extensionCount, nullptr);
 		std::vector<VkExtensionProperties> availableExtensions(extensionCount);
-		vkEnumerateDeviceExtensionProperties(device, nullptr, &extensionCount, availableExtensions.data());
+		vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &extensionCount, availableExtensions.data());
 
 		std::set<std::string> requiredExtensions(m_RequiredExtensions.begin(), m_RequiredExtensions.end());
 		for (size_t i = 0; i < availableExtensions.size(); i++)
@@ -1276,14 +1272,14 @@ namespace Arcane
 		return requiredExtensions.empty();
 	}
 
-	DeviceQueueIndices VulkanAPI::FindDeviceQueueIndices(const VkPhysicalDevice &device)
+	DeviceQueueIndices VulkanAPI::FindDeviceQueueIndices(const VkPhysicalDevice &physicalDevice)
 	{
 		DeviceQueueIndices queueIndices;
 
 		uint32_t queueFamilyCount = 0;
-		vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, nullptr);
+		vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, &queueFamilyCount, nullptr);
 		std::vector<VkQueueFamilyProperties> queueFamilies(queueFamilyCount);
-		vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, queueFamilies.data());
+		vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, &queueFamilyCount, queueFamilies.data());
 
 		for (uint32_t i = 0; i < queueFamilies.size(); i++)
 		{
@@ -1294,7 +1290,7 @@ namespace Arcane
 				So for now keep this additional conditional check for setting the present queue index and just override the present queue index if it is also a graphics queue
 			*/
 			VkBool32 presentQueue = false;
-			vkGetPhysicalDeviceSurfaceSupportKHR(device, i, m_Surface, &presentQueue);
+			vkGetPhysicalDeviceSurfaceSupportKHR(physicalDevice, i, m_Surface, &presentQueue);
 			if (presentQueue && (!queueIndices.presentQueue.has_value() || queueFamilies[i].queueFlags & VK_QUEUE_GRAPHICS_BIT))
 			{
 				queueIndices.presentQueue = i;
@@ -1324,26 +1320,26 @@ namespace Arcane
 		return queueIndices;
 	}
 
-	SwapchainSupportDetails VulkanAPI::QuerySwapchainSupport(const VkPhysicalDevice &device)
+	SwapchainSupportDetails VulkanAPI::QuerySwapchainSupport(const VkPhysicalDevice &physicalDevice)
 	{
 		SwapchainSupportDetails swapchainDetails;
 
-		vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device, m_Surface, &swapchainDetails.capabilities);
+		vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physicalDevice, m_Surface, &swapchainDetails.capabilities);
 
 		uint32_t formatCount = 0;
-		vkGetPhysicalDeviceSurfaceFormatsKHR(device, m_Surface, &formatCount, nullptr);
+		vkGetPhysicalDeviceSurfaceFormatsKHR(physicalDevice, m_Surface, &formatCount, nullptr);
 		if (formatCount != 0)
 		{
 			swapchainDetails.formats.resize(formatCount);
-			vkGetPhysicalDeviceSurfaceFormatsKHR(device, m_Surface, &formatCount, swapchainDetails.formats.data());
+			vkGetPhysicalDeviceSurfaceFormatsKHR(physicalDevice, m_Surface, &formatCount, swapchainDetails.formats.data());
 		}
 
 		uint32_t presentModeCount = 0;
-		vkGetPhysicalDeviceSurfacePresentModesKHR(device, m_Surface, &presentModeCount, nullptr);
+		vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice, m_Surface, &presentModeCount, nullptr);
 		if (presentModeCount != 0)
 		{
 			swapchainDetails.presentModes.resize(presentModeCount);
-			vkGetPhysicalDeviceSurfacePresentModesKHR(device, m_Surface, &presentModeCount, swapchainDetails.presentModes.data());
+			vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice, m_Surface, &presentModeCount, swapchainDetails.presentModes.data());
 		}
 
 		return swapchainDetails;

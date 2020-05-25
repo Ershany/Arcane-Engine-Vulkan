@@ -17,6 +17,14 @@ namespace Arcane
 		{
 			return graphicsQueue.has_value() && computeQueue.has_value() && copyQueue.has_value() && presentQueue.has_value();
 		}
+
+		void Reset()
+		{
+			graphicsQueue.reset();
+			computeQueue.reset();
+			copyQueue.reset();
+			presentQueue.reset();
+		}
 	};
 
 	struct SwapchainSupportDetails
@@ -85,7 +93,7 @@ namespace Arcane
 		void InitVulkan();
 
 		// Helpers
-		void CreateShader(const std::string &vertBinaryPath, const std::string &fragBinaryPath);
+		Shader* CreateShader(const std::string &vertBinaryPath, const std::string &fragBinaryPath);
 		void CreateBuffer(VkDeviceSize bufferSize, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkSharingMode sharingMode, VkBuffer *outBuffer, VkDeviceMemory *outBufferMemory);
 		void CreateImage2D(uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkSharingMode sharingMode,
 							VkImage *outImage, VkDeviceMemory *outTextureMemory);
@@ -131,9 +139,9 @@ namespace Arcane
 		uint32_t FindMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties);
 
 		int ScorePhysicalDeviceSuitability(const VkPhysicalDevice &device);
-		bool CheckPhysicalDeviceExtensionSupport(const VkPhysicalDevice &device);
-		DeviceQueueIndices FindDeviceQueueIndices(const VkPhysicalDevice &device);
-		SwapchainSupportDetails QuerySwapchainSupport(const VkPhysicalDevice &device);
+		bool CheckPhysicalDeviceExtensionSupport(const VkPhysicalDevice &physicalDevice);
+		DeviceQueueIndices FindDeviceQueueIndices(const VkPhysicalDevice &physicalDevice);
+		SwapchainSupportDetails QuerySwapchainSupport(const VkPhysicalDevice &physicalDevice);
 		VkSurfaceFormatKHR ChooseSwapchainSurfaceFormat(const std::vector<VkSurfaceFormatKHR> &availableFormats);
 		VkPresentModeKHR ChooseSwapchainPresentMode(const std::vector<VkPresentModeKHR> &availablePresentModes);
 		VkExtent2D ChooseSwapchainExtent(const VkSurfaceCapabilitiesKHR &capabilities);
@@ -162,6 +170,7 @@ namespace Arcane
 		VkInstance m_Instance;
 		VkPhysicalDevice m_PhysicalDevice;
 		VkDevice m_Device;
+		DeviceQueueIndices m_DeviceQueueIndices;
 
 		VkSwapchainKHR m_Swapchain;
 		std::vector<VkImage> m_SwapchainImages;
@@ -209,10 +218,10 @@ namespace Arcane
 		VkImageView m_TextureImageView;
 		VkSampler m_GenericTextureSampler;
 		const std::vector<Vertex> vertices = {
-			{{-0.5f, -0.5f, 0.0f}, {1.0f, 0.0f, 0.0f}, {0.0f, 1.0f}},
-			{{0.5f, -0.5f, 0.0f}, {0.0f, 1.0f, 0.0f}, {1.0f, 1.0f}},
-			{{0.5f, 0.5f, 0.0f}, {0.0f, 0.0f, 1.0f}, {1.0f, 0.0f}},
-			{{-0.5f, 0.5f, 0.0f}, {1.0f, 1.0f, 1.0f}, {0.0f, 0.0f}},
+			{{-0.5f, -0.5f, 0.0f}, {1.0f, 0.0f, 0.0f}, {0.0f, 1.0f}}, // Bottom Left
+			{{0.5f, -0.5f, 0.0f}, {0.0f, 1.0f, 0.0f}, {1.0f, 1.0f}}, // Bottom Right
+			{{0.5f, 0.5f, 0.0f}, {0.0f, 0.0f, 1.0f}, {1.0f, 0.0f}}, // Top Right
+			{{-0.5f, 0.5f, 0.0f}, {1.0f, 1.0f, 1.0f}, {0.0f, 0.0f}}, // Top left
 
 			{{-0.5f, -0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}, {0.0f, 1.0f}},
 			{{0.5f, -0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}, {1.0f, 1.0f}},
@@ -221,8 +230,8 @@ namespace Arcane
 		};
 		const std::vector<uint16_t> indices =
 		{
-			0, 1, 2, 2, 3, 0,
-			4, 5, 6, 6, 7, 4
+			0, 2, 1, 2, 0, 3,
+			4, 6, 5, 6, 4, 7
 		};
 
 		const std::vector<const char*> m_RequiredExtensions = {

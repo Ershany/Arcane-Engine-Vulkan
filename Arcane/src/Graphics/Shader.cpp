@@ -5,7 +5,7 @@
 
 namespace Arcane
 {
-	Shader::Shader(const VkDevice *device, const std::string &vertBinaryPath, const std::string &fragBinaryPath) : m_Device(device), m_VertexBinaryPath(vertBinaryPath), m_FragBinaryPath(fragBinaryPath)
+	Shader::Shader(const VkDevice device, const std::string &vertBinaryPath, const std::string &fragBinaryPath) : m_Device(device), m_VertexBinaryPath(vertBinaryPath), m_FragBinaryPath(fragBinaryPath)
 	{
 		Init();
 	}
@@ -13,8 +13,8 @@ namespace Arcane
 	Shader::~Shader()
 	{
 		// Can be freed after the PSO is created, but then you can't create new pipeline state objects using said shader at runtime
-		vkDestroyShaderModule(*m_Device, m_VertexShaderModule, nullptr);
-		vkDestroyShaderModule(*m_Device, m_FragmentShaderModule, nullptr);
+		vkDestroyShaderModule(m_Device, m_VertexShaderModule, nullptr);
+		vkDestroyShaderModule(m_Device, m_FragmentShaderModule, nullptr);
 	}
 
 	void Shader::Init()
@@ -57,7 +57,7 @@ namespace Arcane
 		createInfo.pCode = reinterpret_cast<const uint32_t*>(shaderBinaryBuffer.data());
 
 		VkShaderModule shaderModule = VK_NULL_HANDLE;
-		VkResult result = vkCreateShaderModule(*m_Device, &createInfo, nullptr, &shaderModule);
+		VkResult result = vkCreateShaderModule(m_Device, &createInfo, nullptr, &shaderModule);
 		ARC_ASSERT(result == VK_SUCCESS, "Failed to create shader module");
 		return shaderModule;
 	}

@@ -98,6 +98,7 @@ namespace Arcane
 		CreateLogicalDeviceAndQueues();
 		CreateSwapchain();
 		CreateSwapchainImageViews();
+		CreateDepthResources();
 		CreateRenderPass();
 		CreateDescriptorSetLayout();
 		CreateGraphicsPipeline();
@@ -284,6 +285,10 @@ namespace Arcane
 		}
 
 		vkDestroyDescriptorPool(m_Device, m_DescriptorPool, nullptr);
+
+		vkDestroyImageView(m_Device, m_DepthImageView, nullptr);
+		vkDestroyImage(m_Device, m_DepthImage, nullptr);
+		vkFreeMemory(m_Device, m_DepthImageMemory, nullptr);
 
 		for (size_t i = 0; i < m_SwapchainFramebuffers.size(); i++)
 			vkDestroyFramebuffer(m_Device, m_SwapchainFramebuffers[i], nullptr);
@@ -477,8 +482,17 @@ namespace Arcane
 
 		for (size_t i = 0; i < m_SwapchainImageViews.size(); i++)
 		{
-			m_SwapchainImageViews[i] = CreateImageView(m_SwapchainImages[i], m_SwapchainImageFormat);
+			m_SwapchainImageViews[i] = CreateImageView(m_SwapchainImages[i], m_SwapchainImageFormat, VK_IMAGE_ASPECT_COLOR_BIT);
 		}
+	}
+
+	void VulkanAPI::CreateDepthResources()
+	{
+		VkFormat depthFormat = FindDepthFormat();
+
+		CreateImage2D(m_SwapchainExtent.width, m_SwapchainExtent.height, depthFormat, VK_IMAGE_TILING_OPTIMAL, 
+			VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, VK_SHARING_MODE_EXCLUSIVE, &m_DepthImage, &m_DepthImageMemory);
+		m_DepthImageView = CreateImageView(m_DepthImage, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT);
 	}
 
 	void VulkanAPI::CreateRenderPass()
@@ -493,17 +507,33 @@ namespace Arcane
 		colourAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 		colourAttachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR; // Images to be presented in the swapchain
 
+		VkAttachmentDescription depthAttachment = {};
+		depthAttachment.format = FindDepthFormat();
+		depthAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
+		depthAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+		depthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+		depthAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+		depthAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_STORE;
+		depthAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+		depthAttachment.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+
+		std::array<VkAttachmentDescription, 2> attachments = { colourAttachment, depthAttachment };
+
 		VkAttachmentReference colourAttachmentRef = {};
 		colourAttachmentRef.attachment = 0;
 		colourAttachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+		VkAttachmentReference depthAttachmentRef = {};
+		depthAttachmentRef.attachment = 1;
+		depthAttachmentRef.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
 		VkSubpassDescription subpass = {};
 		subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS; // Vulkan can support compute subpass so graphics queue needs to be specified
 		subpass.colorAttachmentCount = 1;
 		subpass.pColorAttachments = &colourAttachmentRef;
+		subpass.pDepthStencilAttachment = &depthAttachmentRef;
 		//subpass.pInputAttachments // Attachments that are read from a shader
 		//subpass.pResolveAttachments // Attachments used for multisampling colour attachments
-		//subpass.pDepthStencilAttachments // Attachment for a depth and stencil attachment
 		//subpass.pPreserveAttachments // Attachments that are not used by this subpass, but for which the data must be preserved
 
 		// TODO: Vulkan has auto defined sub passes before and after your subpass. Since the render pass sets up data in a certain way before and after
@@ -521,8 +551,8 @@ namespace Arcane
 
 		VkRenderPassCreateInfo renderPassCreateInfo = {};
 		renderPassCreateInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-		renderPassCreateInfo.attachmentCount = 1;
-		renderPassCreateInfo.pAttachments = &colourAttachment;
+		renderPassCreateInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
+		renderPassCreateInfo.pAttachments = attachments.data();
 		renderPassCreateInfo.subpassCount = 1;
 		renderPassCreateInfo.pSubpasses = &subpass;
 		renderPassCreateInfo.dependencyCount = 1;
@@ -620,6 +650,15 @@ namespace Arcane
 		multisampleCreateInfo.alphaToOneEnable = VK_FALSE;
 
 		VkPipelineDepthStencilStateCreateInfo depthStencilCreateInfo = {};
+		depthStencilCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+		depthStencilCreateInfo.pNext = nullptr;
+		depthStencilCreateInfo.depthTestEnable = VK_TRUE;
+		depthStencilCreateInfo.depthWriteEnable = VK_TRUE;
+		depthStencilCreateInfo.depthCompareOp = VK_COMPARE_OP_LESS;
+		depthStencilCreateInfo.depthBoundsTestEnable = VK_FALSE;
+		depthStencilCreateInfo.minDepthBounds = 0.0f;
+		depthStencilCreateInfo.maxDepthBounds = 1.0f;
+		depthStencilCreateInfo.stencilTestEnable = VK_FALSE;
 
 		VkPipelineColorBlendAttachmentState colourBlendState = {};
 		colourBlendState.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
@@ -681,16 +720,17 @@ namespace Arcane
 
 		for (size_t i = 0; i < m_SwapchainFramebuffers.size(); i++)
 		{
-			VkImageView attachments[] =
+			std::array<VkImageView, 2> attachments =
 			{
-				m_SwapchainImageViews[i]
+				m_SwapchainImageViews[i],
+				m_DepthImageView
 			};
 
 			VkFramebufferCreateInfo framebufferInfo = {};
 			framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
 			framebufferInfo.renderPass = m_RenderPass;
-			framebufferInfo.attachmentCount = 1;
-			framebufferInfo.pAttachments = attachments;
+			framebufferInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
+			framebufferInfo.pAttachments = attachments.data();
 			framebufferInfo.width = m_SwapchainExtent.width;
 			framebufferInfo.height = m_SwapchainExtent.height;
 			framebufferInfo.layers = 1;
@@ -760,9 +800,11 @@ namespace Arcane
 			renderPassBegin.framebuffer = m_SwapchainFramebuffers[i];
 			renderPassBegin.renderArea.offset = { 0, 0 };
 			renderPassBegin.renderArea.extent = m_SwapchainExtent;
-			VkClearValue clearColour = { 0.0f, 0.0f, 0.0f, 1.0f };
-			renderPassBegin.clearValueCount = 1;
-			renderPassBegin.pClearValues = &clearColour;
+			std::array<VkClearValue, 2> clearValues;
+			clearValues[0].color = { 0.0f, 0.0f, 0.0f, 1.0f };
+			clearValues[1].depthStencil = { 1.0f, 0 };
+			renderPassBegin.clearValueCount = static_cast<uint32_t>(clearValues.size());
+			renderPassBegin.pClearValues = clearValues.data();
 
 			VkBuffer vertexBuffers[] = { m_VertexBuffer };
 			VkDeviceSize offsets[] = { 0 };
@@ -824,6 +866,7 @@ namespace Arcane
 		CreateSwapchainImageViews();
 		CreateRenderPass();
 		CreateGraphicsPipeline();
+		CreateDepthResources();
 		CreateFramebuffers();
 		CreateUniformBuffers();
 		CreateDescriptorPool();
@@ -982,7 +1025,7 @@ namespace Arcane
 		stbi_uc *pixels = stbi_load("res/Textures/rockstar.png", &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
 		ARC_ASSERT(pixels, "Asset: Failed to load image");
 
-		VkDeviceSize imageSize = (long)texWidth * (long)texHeight * 4;
+		VkDeviceSize imageSize = (long)texWidth * (long)texHeight * (long)4;
 
 		VkBuffer stagingBuffer;
 		VkDeviceMemory stagingMemory;
@@ -1011,7 +1054,7 @@ namespace Arcane
 
 	void VulkanAPI::CreateTextureImageViews()
 	{
-		m_TextureImageView = CreateImageView(m_TextureImage, VK_FORMAT_R8G8B8A8_SRGB);
+		m_TextureImageView = CreateImageView(m_TextureImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT);
 	}
 
 	void VulkanAPI::CreateTextureSamplers()
@@ -1111,6 +1154,13 @@ namespace Arcane
 			sourceStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
 			destStage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
 		}
+		else if (oldLayout == VK_IMAGE_LAYOUT_UNDEFINED && newLayout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
+		{
+			barrier.srcAccessMask = 0;
+			barrier.dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+			sourceStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+			destStage = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+		}
 		else
 		{
 			ARC_ASSERT(false, "Vulkan: Image Layout Transition - NOT SUPPORTED { {0} -> {1} }", oldLayout, newLayout);
@@ -1127,7 +1177,7 @@ namespace Arcane
 		EndSingleUseCommands(commandBuffer, m_GraphicsCommandPool, m_GraphicsQueue);
 	}
 
-	VkImageView VulkanAPI::CreateImageView(VkImage image, VkFormat format)
+	VkImageView VulkanAPI::CreateImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags)
 	{
 		VkImageViewCreateInfo createInfo = {};
 		createInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
@@ -1138,7 +1188,7 @@ namespace Arcane
 		createInfo.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
 		createInfo.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
 		createInfo.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
-		createInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+		createInfo.subresourceRange.aspectMask = aspectFlags;
 		createInfo.subresourceRange.baseMipLevel = 0;
 		createInfo.subresourceRange.levelCount = 1;
 		createInfo.subresourceRange.baseArrayLayer = 0;
@@ -1342,6 +1392,37 @@ namespace Arcane
 		extent.width = std::clamp(extent.width, capabilities.minImageExtent.width, capabilities.maxImageExtent.width);
 		extent.height = std::clamp(extent.height, capabilities.minImageExtent.height, capabilities.maxImageExtent.height);
 		return extent;
+	}
+
+	VkFormat VulkanAPI::FindDepthFormat()
+	{
+		return FindSupportedFormat({ VK_FORMAT_D24_UNORM_S8_UINT }, VK_IMAGE_TILING_OPTIMAL, VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT);
+	}
+
+	bool VulkanAPI::HasStencilComponent(VkFormat format)
+	{
+		return format == VK_FORMAT_D32_SFLOAT_S8_UINT || format == VK_FORMAT_D24_UNORM_S8_UINT;
+	}
+
+	VkFormat VulkanAPI::FindSupportedFormat(const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features)
+	{
+		for (VkFormat format : candidates)
+		{
+			VkFormatProperties props;
+			vkGetPhysicalDeviceFormatProperties(m_PhysicalDevice, format, &props);
+
+			if (tiling == VK_IMAGE_TILING_LINEAR && (props.linearTilingFeatures & features) == features)
+			{
+				return format;
+			}
+			else if (tiling == VK_IMAGE_TILING_OPTIMAL && (props.optimalTilingFeatures & features) == features)
+			{
+				return format;
+			}
+		}
+
+		ARC_ASSERT(false, "Vulkan: Failed to find supported format");
+		return VK_FORMAT_UNDEFINED;
 	}
 
 	std::vector<const char*> VulkanAPI::GetRequiredExtensions()

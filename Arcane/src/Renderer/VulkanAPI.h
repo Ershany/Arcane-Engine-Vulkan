@@ -29,7 +29,7 @@ namespace Arcane
 	// Temporary
 	struct Vertex
 	{
-		glm::vec2 pos;
+		glm::vec3 pos;
 		glm::vec3 colour;
 		glm::vec2 uv;
 
@@ -52,7 +52,7 @@ namespace Arcane
 			attributeDescription[0].binding = 0;
 			attributeDescription[0].location = 0;
 			attributeDescription[0].offset = offsetof(Vertex, pos);
-			attributeDescription[0].format = VK_FORMAT_R32G32_SFLOAT;
+			attributeDescription[0].format = VK_FORMAT_R32G32B32_SFLOAT;
 
 			attributeDescription[1].binding = 0;
 			attributeDescription[1].location = 1;
@@ -104,6 +104,7 @@ namespace Arcane
 		void CreateLogicalDeviceAndQueues();
 		void CreateSwapchain();
 		void CreateSwapchainImageViews();
+		void CreateDepthResources();
 		void CreateRenderPass();
 		void CreateDescriptorSetLayout();
 		void CreateGraphicsPipeline();
@@ -126,7 +127,7 @@ namespace Arcane
 		void EndSingleUseCommands(VkCommandBuffer commandBuffer, VkCommandPool pool, VkQueue queue);
 		void TransitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout);
 
-		VkImageView CreateImageView(VkImage image, VkFormat format);
+		VkImageView CreateImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags);
 		uint32_t FindMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties);
 
 		int ScorePhysicalDeviceSuitability(const VkPhysicalDevice &device);
@@ -136,6 +137,9 @@ namespace Arcane
 		VkSurfaceFormatKHR ChooseSwapchainSurfaceFormat(const std::vector<VkSurfaceFormatKHR> &availableFormats);
 		VkPresentModeKHR ChooseSwapchainPresentMode(const std::vector<VkPresentModeKHR> &availablePresentModes);
 		VkExtent2D ChooseSwapchainExtent(const VkSurfaceCapabilitiesKHR &capabilities);
+		VkFormat FindDepthFormat();
+		bool HasStencilComponent(VkFormat format);
+		VkFormat FindSupportedFormat(const std::vector<VkFormat> &candidates, VkImageTiling tiling, VkFormatFeatureFlags features);
 		bool CheckValidationLayerSupport();
 		std::vector<const char*> GetRequiredExtensions();
 		void PopulateDebugMessengerCreateInfo(VkDebugUtilsMessengerCreateInfoEXT &createInfo);
@@ -166,6 +170,9 @@ namespace Arcane
 		VkFormat m_SwapchainImageFormat;
 		VkExtent2D m_SwapchainExtent;
 		VkSurfaceKHR m_Surface;
+		VkImage m_DepthImage;
+		VkDeviceMemory m_DepthImageMemory;
+		VkImageView m_DepthImageView;
 
 		VkQueue m_GraphicsQueue;
 		VkQueue m_ComputeQueue;
@@ -202,14 +209,20 @@ namespace Arcane
 		VkImageView m_TextureImageView;
 		VkSampler m_GenericTextureSampler;
 		const std::vector<Vertex> vertices = {
-			{{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}, {0.0f, 1.0f}},
-			{{0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}, {1.0f, 1.0f}},
-			{{0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}, {1.0f, 0.0f}},
-			{{-0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}, {0.0f, 0.0f}}
+			{{-0.5f, -0.5f, 0.0f}, {1.0f, 0.0f, 0.0f}, {0.0f, 1.0f}},
+			{{0.5f, -0.5f, 0.0f}, {0.0f, 1.0f, 0.0f}, {1.0f, 1.0f}},
+			{{0.5f, 0.5f, 0.0f}, {0.0f, 0.0f, 1.0f}, {1.0f, 0.0f}},
+			{{-0.5f, 0.5f, 0.0f}, {1.0f, 1.0f, 1.0f}, {0.0f, 0.0f}},
+
+			{{-0.5f, -0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}, {0.0f, 1.0f}},
+			{{0.5f, -0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}, {1.0f, 1.0f}},
+			{{0.5f, 0.5f, -0.5f}, {0.0f, 0.0f, 1.0f}, {1.0f, 0.0f}},
+			{{-0.5f, 0.5f, -0.5f}, {1.0f, 1.0f, 1.0f}, {0.0f, 0.0f}}
 		};
 		const std::vector<uint16_t> indices =
 		{
-			0, 1, 2, 2, 3, 0
+			0, 1, 2, 2, 3, 0,
+			4, 5, 6, 6, 7, 4
 		};
 
 		const std::vector<const char*> m_RequiredExtensions = {

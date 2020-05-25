@@ -1,3 +1,4 @@
+-Viewport needs to be set as dynamic state (instead of having to create PSOs when that changes) (Should this be done?)
 -Queue Indices should be saved for the chosen device
 -Abstract vertex buffer creation (and other buffer types, privatize the functions users do not need)
 -CreateShader function is empty in Vulkan API

@@ -43,11 +43,12 @@ namespace Arcane
 		EventDispatcher dispatcher(e);
 		dispatcher.Dispatch<WindowResizeEvent>(std::bind(&Application::OnWindowResize, this, std::placeholders::_1));
 
-		for (auto iter = m_LayerStack.end(); iter != m_LayerStack.begin(); --iter)
+		for (auto iter = m_LayerStack.rbegin(); iter != m_LayerStack.rend(); ++iter)
 		{
-			(*iter)->OnEvent(e);
 			if (e.Handled)
 				break;
+
+			(*iter)->OnEvent(e);
 		}
 
 		//ARC_LOG_INFO("{0}", e);

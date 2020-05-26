@@ -7,6 +7,7 @@
 #include "Core/Window.h"
 #include "Core/FileUtils.h"
 #include "Graphics/Shader.h"
+#include "Vendor/ImGui/imgui.h"
 
 namespace Arcane
 {
@@ -114,6 +115,33 @@ namespace Arcane
 		CreateDescriptorSets();
 		CreateCommandBuffers();
 		CreateSyncObjects();
+	}
+
+	void VulkanAPI::InitImGui()
+	{
+		/*
+		IMGUI_CHECKVERSION();
+		ImGui::CreateContext();
+		ImGui::StyleColorsDark();
+
+		ImGuiIO &io = ImGui::GetIO();
+		io.BackendFlags |= ImGuiBackendFlags_HasMouseCursors;
+		io.BackendFlags |= ImGuiBackendFlags_HasSetMousePos;
+
+		io.DisplaySize = ImVec2(m_Window->GetWidth(), m_Window->GetHeight());
+		io.DisplayFramebufferScale = ImVec2(1.0f, 1.0f);
+
+		ImGui_ImplVulkan_InitInfo initInfo = {};
+		initInfo.Instance = m_Instance;
+		initInfo.PhysicalDevice = m_PhysicalDevice;
+		initInfo.Device = m_Device;
+		initInfo.QueueFamily = m_DeviceQueueIndices.graphicsQueue.value();
+		initInfo.Queue = m_PresentQueue;
+		initInfo.PipelineCache = VK_NULL_HANDLE;
+		initInfo.DescriptorPool = m_DescriptorPool; // Needs to have custom slots for ImGui
+
+		ImGui_ImplVulkan_Init()
+		*/
 	}
 
 	Shader* VulkanAPI::CreateShader(const std::string & vertBinaryPath, const std::string & fragBinaryPath)

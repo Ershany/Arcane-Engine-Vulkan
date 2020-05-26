@@ -52,6 +52,7 @@ namespace Arcane
 
 		void Render();
 		void InitVulkan();
+		void InitImGui();
 
 		// Helpers
 		Shader* CreateShader(const std::string &vertBinaryPath, const std::string &fragBinaryPath);

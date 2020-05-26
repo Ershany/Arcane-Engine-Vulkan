@@ -1,7 +1,9 @@
 #include "arcpch.h"
 #include "ImGuiLayer.h"
 
-//#include "Vendor/ImGui/imgui.h"
+#include "Core/Application.h"
+#include "Graphics/Renderer/VulkanAPI.h"
+#include "Vendor/ImGui/imgui.h"
 
 namespace Arcane
 {
@@ -18,6 +20,8 @@ namespace Arcane
 
 	void ImGuiLayer::OnAttach()
 	{
+		Arcane::Application::GetInstance().GetVulkanAPI()->InitImGui();
+
 		/*
 		ImGui::CreateContext();
 		ImGui::StyleColorsDark();

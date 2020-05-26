@@ -27,6 +27,8 @@ namespace Arcane
 
 		void PushLayer(Layer *layer);
 		void PushOverlay(Layer *overlay);
+
+		inline VulkanAPI* GetVulkanAPI() { return m_Vulkan; }
 	private:
 		void Cleanup();
 		void Loop();

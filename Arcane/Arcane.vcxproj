@@ -153,6 +153,8 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="src\Graphics\Mesh\Material.cpp" />
+    <ClCompile Include="src\Graphics\Mesh\Mesh.cpp" />
+    <ClCompile Include="src\Graphics\Renderer\Renderer.cpp" />
     <ClCompile Include="src\Graphics\Renderer\VulkanAPI.cpp" />
     <ClCompile Include="src\Layers\ImGuiLayer.cpp" />
     <ClCompile Include="src\Core\Layer.cpp" />
@@ -199,7 +201,10 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="src\Graphics\Vertex.h" />
     <ClInclude Include="src\Graphics\Mesh\Material.h" />
+    <ClInclude Include="src\Graphics\Mesh\Mesh.h" />
+    <ClInclude Include="src\Graphics\Renderer\Renderer.h" />
     <ClInclude Include="src\Layers\ImGuiLayer.h" />
     <ClInclude Include="src\Core\Layer.h" />
     <ClInclude Include="src\Core\LayerStack.h" />

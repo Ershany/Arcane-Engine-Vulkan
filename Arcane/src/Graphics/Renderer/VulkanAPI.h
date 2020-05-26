@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Graphics/Vertex.h"
+
 namespace Arcane
 {
 	class Window;
@@ -34,47 +36,6 @@ namespace Arcane
 		std::vector<VkPresentModeKHR> presentModes;
 	};
 
-	// Temporary
-	struct Vertex
-	{
-		glm::vec3 pos;
-		glm::vec3 colour;
-		glm::vec2 uv;
-
-		// Describes vertex buffers
-		static VkVertexInputBindingDescription GetBindingDescription()
-		{
-			VkVertexInputBindingDescription bindingDescription = {};
-			bindingDescription.binding = 0;
-			bindingDescription.stride = sizeof(Vertex);
-			bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX; // This is where you can use instance rendering
-
-			return bindingDescription;
-		}
-
-		// Describes attributes, allows for different variable locations to be defined in different vertex buffers
-		static std::array<VkVertexInputAttributeDescription, 3> GetAttributeDescription()
-		{
-			std::array<VkVertexInputAttributeDescription, 3> attributeDescription{};
-			
-			attributeDescription[0].binding = 0;
-			attributeDescription[0].location = 0;
-			attributeDescription[0].offset = offsetof(Vertex, pos);
-			attributeDescription[0].format = VK_FORMAT_R32G32B32_SFLOAT;
-
-			attributeDescription[1].binding = 0;
-			attributeDescription[1].location = 1;
-			attributeDescription[1].offset = offsetof(Vertex, colour);
-			attributeDescription[1].format = VK_FORMAT_R32G32B32_SFLOAT;
-
-			attributeDescription[2].binding = 0;
-			attributeDescription[2].location = 2;
-			attributeDescription[2].offset = offsetof(Vertex, uv);
-			attributeDescription[2].format = VK_FORMAT_R32G32_SFLOAT;
-
-			return attributeDescription;
-		}
-	};
 	// Temporary (alignas makes sure the variable is N byte aligned, should mimic the struct packing in the shaders)
 	struct StandardMaterialUBO
 	{
@@ -218,10 +179,10 @@ namespace Arcane
 		VkImageView m_TextureImageView;
 		VkSampler m_GenericTextureSampler;
 		const std::vector<Vertex> vertices = {
-			{{-0.5f, -0.5f, 0.0f}, {1.0f, 0.0f, 0.0f}, {0.0f, 1.0f}}, // Bottom Left
-			{{0.5f, -0.5f, 0.0f}, {0.0f, 1.0f, 0.0f}, {1.0f, 1.0f}}, // Bottom Right
-			{{0.5f, 0.5f, 0.0f}, {0.0f, 0.0f, 1.0f}, {1.0f, 0.0f}}, // Top Right
-			{{-0.5f, 0.5f, 0.0f}, {1.0f, 1.0f, 1.0f}, {0.0f, 0.0f}}, // Top left
+			{{-0.5f, -0.5f, 0.0f}, {1.0f, 0.0f, 0.0f}, {0.0f, 1.0f}},
+			{{0.5f, -0.5f, 0.0f}, {0.0f, 1.0f, 0.0f}, {1.0f, 1.0f}},
+			{{0.5f, 0.5f, 0.0f}, {0.0f, 0.0f, 1.0f}, {1.0f, 0.0f}},
+			{ { -0.5f, 0.5f, 0.0f }, {1.0f, 1.0f, 1.0f}, {0.0f, 0.0f}},
 
 			{{-0.5f, -0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}, {0.0f, 1.0f}},
 			{{0.5f, -0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}, {1.0f, 1.0f}},

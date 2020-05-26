@@ -25,6 +25,12 @@ namespace Arcane
 		Cleanup();
 	}
 
+	Application& Application::GetInstance()
+	{
+		static Application app;
+		return app;
+	}
+
 	void Application::Run()
 	{
 		m_Vulkan->InitVulkan();

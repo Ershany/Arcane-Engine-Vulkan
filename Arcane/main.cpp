@@ -9,8 +9,7 @@ int main(int argc, char **argv)
 	Arcane::Logger::GetInstance();
 	ARC_LOG_INFO("Initialized Logger");
 
-	Arcane::Application application;
-	application.Run();
+	Arcane::Application::GetInstance().Run();
 
 	return EXIT_SUCCESS;
 }

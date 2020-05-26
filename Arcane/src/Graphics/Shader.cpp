@@ -59,6 +59,7 @@ namespace Arcane
 		VkShaderModule shaderModule = VK_NULL_HANDLE;
 		VkResult result = vkCreateShaderModule(m_Device, &createInfo, nullptr, &shaderModule);
 		ARC_ASSERT(result == VK_SUCCESS, "Failed to create shader module");
+
 		return shaderModule;
 	}
 }

@@ -2,6 +2,7 @@
 
 #include "Defs.h"
 #include "Core/Timer.h"
+#include "Core/Singleton.h"
 #include "Events/Event.h"
 #include "Events/ApplicationEvent.h"
 #include "Core/LayerStack.h"
@@ -12,11 +13,13 @@ namespace Arcane
 	class VulkanAPI;
 	class Layer;
 
-	class Application
+	class Application : public Singleton
 	{
-	public:
+	private:
 		Application();
 		virtual  ~Application();
+	public:
+		static Application& GetInstance();
 
 		void Run();
 

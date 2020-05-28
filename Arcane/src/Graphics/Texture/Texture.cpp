@@ -25,7 +25,6 @@ void Arcane::Texture::GenerateTexture(uint32_t width, uint32_t height, const voi
 	VkBuffer stagingBuffer;
 	VkDeviceMemory stagingMemory;
 
-	// TODO: Should this be VK_SHARING_MODE_CONCURRENT?
 	m_Vulkan->CreateBuffer(imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, VK_SHARING_MODE_EXCLUSIVE, &stagingBuffer, &stagingMemory);
 
 	void *pointerToMem = nullptr;
@@ -33,9 +32,8 @@ void Arcane::Texture::GenerateTexture(uint32_t width, uint32_t height, const voi
 	memcpy(pointerToMem, data, static_cast<size_t>(imageSize));
 	vkUnmapMemory(*m_Vulkan->GetDevice(), stagingMemory);
 
-	// TODO: Do we need VK_SHARING_MODE_CONCURRENT? 
 	m_Vulkan->CreateImage2D(m_Width, m_Height, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
-		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, VK_SHARING_MODE_CONCURRENT, &m_TextureImage, &m_TextureImageMemory);
+		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, VK_SHARING_MODE_EXCLUSIVE, &m_TextureImage, &m_TextureImageMemory);
 
 	// TODO: These should all be recorded by a single command buffer, instead of each function synchronously submitting its own command buffer
 	// Make a function SetupCommandBuffer() & FlushSetupCommandBuffer() or something and record all of these actions into one command buffer

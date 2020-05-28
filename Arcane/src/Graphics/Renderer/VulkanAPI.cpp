@@ -144,9 +144,9 @@ namespace Arcane
 		*/
 	}
 
-	Shader* VulkanAPI::CreateShader(const std::string & vertBinaryPath, const std::string & fragBinaryPath)
+	Shader* VulkanAPI::CreateShader(const std::string &vertBinaryPath, const std::string &fragBinaryPath)
 	{
-		return new Shader(m_Device, vertBinaryPath, fragBinaryPath);
+		return new Shader(this, vertBinaryPath, fragBinaryPath);
 	}
 
 	void VulkanAPI::CreateBuffer(VkDeviceSize bufferSize, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkSharingMode sharingMode, VkBuffer *outBuffer, VkDeviceMemory *outBufferMemory)
@@ -835,7 +835,7 @@ namespace Arcane
 			VkDeviceSize offsets[] = { 0 };
 
 			vkCmdBeginRenderPass(m_GraphicsCommandBuffers[i], &renderPassBegin, VK_SUBPASS_CONTENTS_INLINE); // Need to specify if you are using secondary command buffers here
-			vkCmdBindPipeline(m_GraphicsCommandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, m_GraphicsPipeline);
+			vkCmdBindPipeline(m_GraphicsCommandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, m_GraphicsPipeline); // PSO has which subpass we are using
 			vkCmdBindVertexBuffers(m_GraphicsCommandBuffers[i], 0, 1, vertexBuffers, offsets);
 			vkCmdBindIndexBuffer(m_GraphicsCommandBuffers[i], m_IndexBuffer, 0, VK_INDEX_TYPE_UINT16);
 			vkCmdBindDescriptorSets(m_GraphicsCommandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, m_PipelineLayout, 0, 1, &m_DescriptorSets[i], 0, nullptr);
@@ -1051,7 +1051,6 @@ namespace Arcane
 		ARC_ASSERT(pixels, "Asset: Failed to load image");
 
 		VkDeviceSize imageSize = (long)texWidth * (long)texHeight * (long)4;
-
 		VkBuffer stagingBuffer;
 		VkDeviceMemory stagingMemory;
 

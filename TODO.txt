@@ -1,3 +1,5 @@
+-Shader should take VulkanAPI
+-TextureLoader
 -Viewport needs to be set as dynamic state (instead of having to create PSOs when that changes) (Should this be done?)
 -Abstract vertex buffer creation (and other buffer types, privatize the functions users do not need)
 -After shader creation is abstracted we can delete the stages memory after the PSO is created (might not even want to do this if we plan on creating more PSOs of said object in the future at runtime)

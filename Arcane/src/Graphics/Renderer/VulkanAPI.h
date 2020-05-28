@@ -62,6 +62,9 @@ namespace Arcane
 		void CopyBuffer(VkBuffer srcBuffer, VkBuffer destBuffer, VkDeviceSize size);
 		void CopyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height);
 
+		// Getters
+		inline const VkDevice* GetDevice() const { return &m_Device; }
+
 		// Setters
 		inline void NotifyWindowResized() { m_FramebufferResized = true; }
 	private:

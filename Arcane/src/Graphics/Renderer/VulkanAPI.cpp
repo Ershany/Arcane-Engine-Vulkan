@@ -7,6 +7,7 @@
 #include "Core/Window.h"
 #include "Core/FileUtils.h"
 #include "Graphics/Shader.h"
+#include "Graphics/Texture/Texture.h"
 #include "Vendor/ImGui/imgui.h"
 
 namespace Arcane
@@ -102,11 +103,10 @@ namespace Arcane
 		CreateDepthResources();
 		CreateRenderPass();
 		CreateDescriptorSetLayout();
+		CreateCommandPool();
+		CreateTemporaryResources();
 		CreateGraphicsPipeline();
 		CreateFramebuffers();
-		CreateCommandPool();
-		CreateTextures();
-		CreateTextureImageViews();
 		CreateTextureSamplers();
 		CreateVertexBuffer();
 		CreateIndexBuffer();
@@ -147,6 +147,19 @@ namespace Arcane
 	Shader* VulkanAPI::CreateShader(const std::string &vertBinaryPath, const std::string &fragBinaryPath)
 	{
 		return new Shader(this, vertBinaryPath, fragBinaryPath);
+	}
+
+	Texture* VulkanAPI::CreateTexture(const std::string &path, TextureSettings *settings)
+	{
+		int texWidth, texHeight, texChannels;
+		stbi_uc *pixels = stbi_load(path.c_str(), &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
+		ARC_ASSERT(pixels, "Asset: Failed to load image");
+
+		Texture *texture = new Texture(this);
+		texture->GenerateTexture((uint32_t)texWidth, (uint32_t)texHeight, pixels);
+
+		stbi_image_free(pixels);
+		return texture;
 	}
 
 	void VulkanAPI::CreateBuffer(VkDeviceSize bufferSize, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkSharingMode sharingMode, VkBuffer *outBuffer, VkDeviceMemory *outBufferMemory) const
@@ -355,9 +368,7 @@ namespace Arcane
 		vkDestroyCommandPool(m_Device, m_CopyCommandPool, nullptr);
 
 		delete m_Shader;
-		vkDestroyImage(m_Device, m_TextureImage, nullptr);
-		vkFreeMemory(m_Device, m_TextureImageMemory, nullptr);
-		vkDestroyImageView(m_Device, m_TextureImageView, nullptr);
+		delete m_Texture;
 		vkDestroySampler(m_Device, m_GenericTextureSampler, nullptr);
 
 		vkDestroyBuffer(m_Device, m_VertexBuffer, nullptr);
@@ -523,6 +534,12 @@ namespace Arcane
 		vkGetDeviceQueue(m_Device, m_DeviceQueueIndices.computeQueue.value(), 0, &m_ComputeQueue);
 		vkGetDeviceQueue(m_Device, m_DeviceQueueIndices.copyQueue.value(), 0, &m_CopyQueue);
 		vkGetDeviceQueue(m_Device, m_DeviceQueueIndices.presentQueue.value(), 0, &m_PresentQueue); // Present queue will be one of the existing queues
+	}
+
+	void VulkanAPI::CreateTemporaryResources()
+	{
+		m_Shader = CreateShader("res/Shaders/simple_vert.spv", "res/Shaders/simple_frag.spv");
+		m_Texture = CreateTexture("res/Textures/rockstar.png");
 	}
 
 	void VulkanAPI::CreateSwapchain()
@@ -698,7 +715,6 @@ namespace Arcane
 
 	void VulkanAPI::CreateGraphicsPipeline()
 	{
-		m_Shader = CreateShader("res/Shaders/simple_vert.spv", "res/Shaders/simple_frag.spv");
 		auto bindingDescription = Vertex::GetBindingDescription();
 		auto attributeDescription = Vertex::GetAttributeDescription();
 
@@ -1078,7 +1094,7 @@ namespace Arcane
 
 			VkDescriptorImageInfo imageInfo = {};
 			imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-			imageInfo.imageView = m_TextureImageView;
+			imageInfo.imageView = m_Texture->GetImageView();
 			imageInfo.sampler = m_GenericTextureSampler;
 
 			std::array<VkWriteDescriptorSet, 2> descriptorWrites = {};
@@ -1122,43 +1138,6 @@ namespace Arcane
 		vkMapMemory(m_Device, m_UniformBuffersMemory[currSwapchainImageIndex], 0, sizeof(standardMatUBO), 0, &data);
 		memcpy(data, &standardMatUBO, sizeof(standardMatUBO));
 		vkUnmapMemory(m_Device, m_UniformBuffersMemory[currSwapchainImageIndex]);
-	}
-
-	void VulkanAPI::CreateTextures()
-	{
-		int texWidth, texHeight, texChannels;
-		stbi_uc *pixels = stbi_load("res/Textures/rockstar.png", &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
-		ARC_ASSERT(pixels, "Asset: Failed to load image");
-
-		VkDeviceSize imageSize = (long)texWidth * (long)texHeight * (long)4;
-		VkBuffer stagingBuffer;
-		VkDeviceMemory stagingMemory;
-
-		CreateBuffer(imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, VK_SHARING_MODE_EXCLUSIVE, &stagingBuffer, &stagingMemory);
-
-		void *data;
-		vkMapMemory(m_Device, stagingMemory, 0, imageSize, 0, &data);
-		memcpy(data, pixels, static_cast<size_t>(imageSize));
-		vkUnmapMemory(m_Device, stagingMemory);
-
-		stbi_image_free(pixels);
-
-		CreateImage2D(texWidth, texHeight, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
-						VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, VK_SHARING_MODE_CONCURRENT, &m_TextureImage, &m_TextureImageMemory);
-
-		// TODO: These should all be recorded by a single command buffer, instead of each function synchronously submitting its own command buffer
-		// Make a function SetupCommandBuffer() & FlushSetupCommandBuffer() or something and record all of these actions into one command buffer
-		TransitionImageLayout(m_TextureImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL); // CreateImage2D sets the layout to VK_IMAGE_LAYOUT_UNDEFINED
-		CopyBufferToImage(stagingBuffer, m_TextureImage, static_cast<uint32_t>(texWidth), static_cast<uint32_t>(texHeight));
-		TransitionImageLayout(m_TextureImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-
-		vkDestroyBuffer(m_Device, stagingBuffer, nullptr);
-		vkFreeMemory(m_Device, stagingMemory, nullptr);
-	}
-
-	void VulkanAPI::CreateTextureImageViews()
-	{
-		m_TextureImageView = CreateImageView(m_TextureImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT);
 	}
 
 	void VulkanAPI::CreateTextureSamplers()

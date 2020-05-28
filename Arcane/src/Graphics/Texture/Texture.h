@@ -19,6 +19,7 @@ namespace Arcane
 
 		inline int GetWidth() const { return m_Width; }
 		inline int GetHeight() const { return m_Height; }
+		inline VkImageView GetImageView() { return m_TextureImageView; }
 	private:
 		const VulkanAPI *const m_Vulkan;
 

@@ -6,6 +6,8 @@ namespace Arcane
 {
 	class Window;
 	class Shader;
+	class Texture;
+	struct TextureSettings;
 
 	struct DeviceQueueIndices
 	{
@@ -56,6 +58,7 @@ namespace Arcane
 
 		// Resource Creation
 		Shader* CreateShader(const std::string &vertBinaryPath, const std::string &fragBinaryPath);
+		Texture* CreateTexture(const std::string &path, TextureSettings *settings = nullptr);
 
 		// Resource Creation Helpers
 		void CreateBuffer(VkDeviceSize bufferSize, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkSharingMode sharingMode, VkBuffer *outBuffer, VkDeviceMemory *outBufferMemory) const;
@@ -89,6 +92,7 @@ namespace Arcane
 		void CreateCommandPool();
 		void CreateCommandBuffers();
 		void CreateSyncObjects();
+		void CreateTemporaryResources();
 		void RecreateSwapchain();
 		void CreateVertexBuffer();
 		void CreateIndexBuffer();
@@ -96,8 +100,6 @@ namespace Arcane
 		void CreateDescriptorPool();
 		void CreateDescriptorSets();
 		void UpdateUniformBuffer(uint32_t currSwapchainImageIndex);
-		void CreateTextures();
-		void CreateTextureImageViews();
 		void CreateTextureSamplers();
 
 		VkCommandBuffer BeginSingleUseCommands(VkCommandPool pool) const;
@@ -179,9 +181,7 @@ namespace Arcane
 		VkBuffer m_IndexBuffer;
 		std::vector<VkBuffer> m_UniformBuffers;
 		std::vector<VkDeviceMemory> m_UniformBuffersMemory;
-		VkImage m_TextureImage;
-		VkDeviceMemory m_TextureImageMemory;
-		VkImageView m_TextureImageView;
+		Texture *m_Texture;
 		VkSampler m_GenericTextureSampler;
 		const std::vector<Vertex> vertices = {
 			{{-0.5f, -0.5f, 0.0f}, {1.0f, 0.0f, 0.0f}, {0.0f, 1.0f}},

@@ -54,13 +54,17 @@ namespace Arcane
 		void InitVulkan();
 		void InitImGui();
 
-		// Helpers
+		// Resource Creation
 		Shader* CreateShader(const std::string &vertBinaryPath, const std::string &fragBinaryPath);
-		void CreateBuffer(VkDeviceSize bufferSize, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkSharingMode sharingMode, VkBuffer *outBuffer, VkDeviceMemory *outBufferMemory);
+
+		// Resource Creation Helpers
+		void CreateBuffer(VkDeviceSize bufferSize, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkSharingMode sharingMode, VkBuffer *outBuffer, VkDeviceMemory *outBufferMemory) const;
 		void CreateImage2D(uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkSharingMode sharingMode,
-							VkImage *outImage, VkDeviceMemory *outTextureMemory);
-		void CopyBuffer(VkBuffer srcBuffer, VkBuffer destBuffer, VkDeviceSize size);
-		void CopyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height);
+							VkImage *outImage, VkDeviceMemory *outTextureMemory) const;
+		void CopyBuffer(VkBuffer srcBuffer, VkBuffer destBuffer, VkDeviceSize size) const;
+		void CopyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height) const;
+		void TransitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout) const;
+		VkImageView CreateImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags) const;
 
 		// Getters
 		inline const VkDevice* GetDevice() const { return &m_Device; }
@@ -96,12 +100,9 @@ namespace Arcane
 		void CreateTextureImageViews();
 		void CreateTextureSamplers();
 
-		VkCommandBuffer BeginSingleUseCommands(VkCommandPool pool);
-		void EndSingleUseCommands(VkCommandBuffer commandBuffer, VkCommandPool pool, VkQueue queue);
-		void TransitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout);
-
-		VkImageView CreateImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags);
-		uint32_t FindMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties);
+		VkCommandBuffer BeginSingleUseCommands(VkCommandPool pool) const;
+		void EndSingleUseCommands(VkCommandBuffer commandBuffer, VkCommandPool pool, VkQueue queue) const;
+		uint32_t FindMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties) const;
 
 		int ScorePhysicalDeviceSuitability(const VkPhysicalDevice &device);
 		bool CheckPhysicalDeviceExtensionSupport(const VkPhysicalDevice &physicalDevice);

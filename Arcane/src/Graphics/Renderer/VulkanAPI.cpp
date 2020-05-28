@@ -149,7 +149,7 @@ namespace Arcane
 		return new Shader(this, vertBinaryPath, fragBinaryPath);
 	}
 
-	void VulkanAPI::CreateBuffer(VkDeviceSize bufferSize, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkSharingMode sharingMode, VkBuffer *outBuffer, VkDeviceMemory *outBufferMemory)
+	void VulkanAPI::CreateBuffer(VkDeviceSize bufferSize, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkSharingMode sharingMode, VkBuffer *outBuffer, VkDeviceMemory *outBufferMemory) const
 	{
 		std::array<uint32_t, 2> allowedQueues{ m_DeviceQueueIndices.graphicsQueue.value(), m_DeviceQueueIndices.copyQueue.value() };
 
@@ -183,7 +183,7 @@ namespace Arcane
 		vkBindBufferMemory(m_Device, *outBuffer, *outBufferMemory, 0); // Associates the allocated memory with the buffer
 	}
 
-	void VulkanAPI::CreateImage2D(uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkSharingMode sharingMode, VkImage *outImage, VkDeviceMemory *outTextureMemory)
+	void VulkanAPI::CreateImage2D(uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkSharingMode sharingMode, VkImage *outImage, VkDeviceMemory *outTextureMemory) const
 	{
 		std::array<uint32_t, 2> allowedQueues{ m_DeviceQueueIndices.graphicsQueue.value(), m_DeviceQueueIndices.copyQueue.value() };
 
@@ -226,7 +226,7 @@ namespace Arcane
 		vkBindImageMemory(m_Device, *outImage, *outTextureMemory, 0);
 	}
 
-	void VulkanAPI::CopyBuffer(VkBuffer srcBuffer, VkBuffer destBuffer, VkDeviceSize size)
+	void VulkanAPI::CopyBuffer(VkBuffer srcBuffer, VkBuffer destBuffer, VkDeviceSize size) const
 	{
 		VkBufferCopy copyRegion = {};
 		copyRegion.size = size;
@@ -238,7 +238,7 @@ namespace Arcane
 		EndSingleUseCommands(commandBuffer, m_CopyCommandPool, m_CopyQueue);
 	}
 
-	void VulkanAPI::CopyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height)
+	void VulkanAPI::CopyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height) const
 	{
 		VkBufferImageCopy copyRegion = {};
 		copyRegion.bufferOffset = 0;
@@ -254,6 +254,86 @@ namespace Arcane
 		VkCommandBuffer commandBuffer = BeginSingleUseCommands(m_GraphicsCommandPool);
 		vkCmdCopyBufferToImage(commandBuffer, buffer, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &copyRegion);
 		EndSingleUseCommands(commandBuffer, m_GraphicsCommandPool, m_GraphicsQueue);
+	}
+
+	void VulkanAPI::TransitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout) const
+	{
+		VkCommandBuffer commandBuffer = BeginSingleUseCommands(m_GraphicsCommandPool);
+
+		VkPipelineStageFlags sourceStage, destStage;
+
+		VkImageMemoryBarrier barrier = {};
+		barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+		barrier.pNext = nullptr;
+		barrier.oldLayout = oldLayout;
+		barrier.newLayout = newLayout;
+		barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+		barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+		barrier.image = image;
+		barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+		barrier.subresourceRange.baseMipLevel = 0;
+		barrier.subresourceRange.levelCount = 1;
+		barrier.subresourceRange.baseArrayLayer = 0;
+		barrier.subresourceRange.layerCount = 1;
+		if (oldLayout == VK_IMAGE_LAYOUT_UNDEFINED && newLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL)
+		{
+			barrier.srcAccessMask = 0;
+			barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT; // Transfer writes do not need to wait on anything
+			sourceStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT; // Earliest possible stage
+			destStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
+		}
+		else if (oldLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL && newLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+		{
+			barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+			barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT; // Shader read should wait on transfer writes
+			sourceStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
+			destStage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+		}
+		else if (oldLayout == VK_IMAGE_LAYOUT_UNDEFINED && newLayout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
+		{
+			barrier.srcAccessMask = 0;
+			barrier.dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+			sourceStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+			destStage = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+		}
+		else
+		{
+			ARC_ASSERT(false, "Vulkan: Image Layout Transition - NOT SUPPORTED { {0} -> {1} }", oldLayout, newLayout);
+		}
+
+		vkCmdPipelineBarrier(commandBuffer,
+			sourceStage, // Specifies in which pipeline stage the operations occur that should happen before the barrier (producer) (Slowest case is when this is set to VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT ie finish all work before proceeding)
+			destStage, // Specifies the pipeline stage in which operations will wait on the barrier (consumer) (Slowest case is when this is set to VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT and the source is set to VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, then it has to wait for the previous work to finish before doing any new work)
+			0,
+			0, nullptr,
+			0, nullptr,
+			1, &barrier);
+
+		EndSingleUseCommands(commandBuffer, m_GraphicsCommandPool, m_GraphicsQueue);
+	}
+
+	VkImageView VulkanAPI::CreateImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags) const
+	{
+		VkImageViewCreateInfo createInfo = {};
+		createInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+		createInfo.image = image;
+		createInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+		createInfo.format = format;
+		createInfo.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
+		createInfo.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
+		createInfo.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
+		createInfo.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
+		createInfo.subresourceRange.aspectMask = aspectFlags;
+		createInfo.subresourceRange.baseMipLevel = 0;
+		createInfo.subresourceRange.levelCount = 1;
+		createInfo.subresourceRange.baseArrayLayer = 0;
+		createInfo.subresourceRange.layerCount = 1;
+
+		VkImageView imageView;
+		VkResult result = vkCreateImageView(m_Device, &createInfo, nullptr, &imageView);
+		ARC_ASSERT(result == VK_SUCCESS, "Vulkan: Failed to create image view");
+
+		return imageView;
 	}
 
 	void VulkanAPI::Cleanup()
@@ -1106,7 +1186,7 @@ namespace Arcane
 		ARC_ASSERT(result == VK_SUCCESS, "Vulkan: Failed to create texture sampler");
 	}
 
-	VkCommandBuffer VulkanAPI::BeginSingleUseCommands(VkCommandPool pool)
+	VkCommandBuffer VulkanAPI::BeginSingleUseCommands(VkCommandPool pool) const
 	{
 		VkCommandBufferAllocateInfo allocInfo = {};
 		allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
@@ -1129,7 +1209,7 @@ namespace Arcane
 		return commandBuffer;
 	}
 
-	void VulkanAPI::EndSingleUseCommands(VkCommandBuffer commandBuffer, VkCommandPool pool, VkQueue queue)
+	void VulkanAPI::EndSingleUseCommands(VkCommandBuffer commandBuffer, VkCommandPool pool, VkQueue queue) const
 	{
 		vkEndCommandBuffer(commandBuffer);
 
@@ -1145,87 +1225,7 @@ namespace Arcane
 		vkFreeCommandBuffers(m_Device, pool, 1, &commandBuffer);
 	}
 
-	void VulkanAPI::TransitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout)
-	{
-		VkCommandBuffer commandBuffer = BeginSingleUseCommands(m_GraphicsCommandPool);
-
-		VkPipelineStageFlags sourceStage, destStage;
-
-		VkImageMemoryBarrier barrier = {};
-		barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-		barrier.pNext = nullptr;
-		barrier.oldLayout = oldLayout;
-		barrier.newLayout = newLayout;
-		barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-		barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-		barrier.image = image;
-		barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-		barrier.subresourceRange.baseMipLevel = 0;
-		barrier.subresourceRange.levelCount = 1;
-		barrier.subresourceRange.baseArrayLayer = 0;
-		barrier.subresourceRange.layerCount = 1;
-		if (oldLayout == VK_IMAGE_LAYOUT_UNDEFINED && newLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL)
-		{
-			barrier.srcAccessMask = 0;
-			barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT; // Transfer writes do not need to wait on anything
-			sourceStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT; // Earliest possible stage
-			destStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
-		}
-		else if (oldLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL && newLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
-		{
-			barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-			barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT; // Shader read should wait on transfer writes
-			sourceStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
-			destStage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
-		}
-		else if (oldLayout == VK_IMAGE_LAYOUT_UNDEFINED && newLayout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
-		{
-			barrier.srcAccessMask = 0;
-			barrier.dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-			sourceStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
-			destStage = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
-		}
-		else
-		{
-			ARC_ASSERT(false, "Vulkan: Image Layout Transition - NOT SUPPORTED { {0} -> {1} }", oldLayout, newLayout);
-		}
-
-		vkCmdPipelineBarrier(commandBuffer,
-			sourceStage, // Specifies in which pipeline stage the operations occur that should happen before the barrier (producer) (Slowest case is when this is set to VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT ie finish all work before proceeding)
-			destStage, // Specifies the pipeline stage in which operations will wait on the barrier (consumer) (Slowest case is when this is set to VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT and the source is set to VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, then it has to wait for the previous work to finish before doing any new work)
-			0,
-			0, nullptr,
-			0, nullptr,
-			1, &barrier);
-
-		EndSingleUseCommands(commandBuffer, m_GraphicsCommandPool, m_GraphicsQueue);
-	}
-
-	VkImageView VulkanAPI::CreateImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags)
-	{
-		VkImageViewCreateInfo createInfo = {};
-		createInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-		createInfo.image = image;
-		createInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
-		createInfo.format = format;
-		createInfo.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
-		createInfo.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
-		createInfo.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
-		createInfo.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
-		createInfo.subresourceRange.aspectMask = aspectFlags;
-		createInfo.subresourceRange.baseMipLevel = 0;
-		createInfo.subresourceRange.levelCount = 1;
-		createInfo.subresourceRange.baseArrayLayer = 0;
-		createInfo.subresourceRange.layerCount = 1;
-
-		VkImageView imageView;
-		VkResult result = vkCreateImageView(m_Device, &createInfo, nullptr, &imageView);
-		ARC_ASSERT(result == VK_SUCCESS, "Vulkan: Failed to create image view");
-
-		return imageView;
-	}
-
-	uint32_t VulkanAPI::FindMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties)
+	uint32_t VulkanAPI::FindMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties) const
 	{
 		VkPhysicalDeviceMemoryProperties memProperties;
 		vkGetPhysicalDeviceMemoryProperties(m_PhysicalDevice, &memProperties);

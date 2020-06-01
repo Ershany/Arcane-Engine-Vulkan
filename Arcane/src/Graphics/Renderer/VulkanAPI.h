@@ -133,6 +133,7 @@ namespace Arcane
 		const Window *const m_Window;
 		VkInstance m_Instance;
 		VkPhysicalDevice m_PhysicalDevice;
+		VkPhysicalDeviceMemoryProperties m_PhysicalDeviceMemoryProperties;
 		VkDevice m_Device;
 		DeviceQueueIndices m_DeviceQueueIndices;
 

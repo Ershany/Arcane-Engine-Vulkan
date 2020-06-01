@@ -468,8 +468,9 @@ namespace Arcane
 
 		ARC_ASSERT(m_PhysicalDevice != VK_NULL_HANDLE, "Failed to find a suitable GPU that supports the extensions required");
 
-		// Finish setting up information after a physical device is chosen
+		// Finish setting up information after a physical device has been chosen
 		m_DeviceQueueIndices = FindDeviceQueueIndices(m_PhysicalDevice);
+		vkGetPhysicalDeviceMemoryProperties(m_PhysicalDevice, &m_PhysicalDeviceMemoryProperties);
 	}
 
 	void VulkanAPI::CreateLogicalDeviceAndQueues()
@@ -1064,7 +1065,7 @@ namespace Arcane
 			VkDescriptorImageInfo imageInfo = {};
 			imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 			imageInfo.imageView = m_Texture->GetImageView();
-			imageInfo.sampler = m_GenericTextureSampler;
+			imageInfo.sampler = m_Texture->GetTextureSampler();
 
 			std::array<VkWriteDescriptorSet, 2> descriptorWrites = {};
 			descriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
@@ -1157,12 +1158,9 @@ namespace Arcane
 
 	uint32_t VulkanAPI::FindMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties) const
 	{
-		VkPhysicalDeviceMemoryProperties memProperties;
-		vkGetPhysicalDeviceMemoryProperties(m_PhysicalDevice, &memProperties);
-
-		for (uint32_t i = 0; i < memProperties.memoryTypeCount; i++)
+		for (uint32_t i = 0; i < m_PhysicalDeviceMemoryProperties.memoryTypeCount; i++)
 		{
-			if ((typeFilter & (1 << i)) && (memProperties.memoryTypes[i].propertyFlags & properties) == properties)
+			if ((typeFilter & (1 << i)) && (m_PhysicalDeviceMemoryProperties.memoryTypes[i].propertyFlags & properties) == properties)
 			{
 				return i;
 			}

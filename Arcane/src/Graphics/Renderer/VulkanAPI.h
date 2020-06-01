@@ -7,6 +7,8 @@ namespace Arcane
 	class Window;
 	class Shader;
 	class Texture;
+	class VertexBuffer;
+	class IndexBuffer;
 	struct TextureSettings;
 
 	struct DeviceQueueIndices
@@ -56,10 +58,6 @@ namespace Arcane
 		void InitVulkan();
 		void InitImGui();
 
-		// Resource Creation
-		Shader* CreateShader(const std::string &vertBinaryPath, const std::string &fragBinaryPath);
-		Texture* CreateTexture(const std::string &path, TextureSettings *settings = nullptr);
-
 		// Resource Creation Helpers
 		void CreateBuffer(VkDeviceSize bufferSize, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkSharingMode sharingMode, VkBuffer *outBuffer, VkDeviceMemory *outBufferMemory) const;
 		void CreateImage2D(uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkSharingMode sharingMode,
@@ -94,12 +92,10 @@ namespace Arcane
 		void CreateSyncObjects();
 		void CreateTemporaryResources();
 		void RecreateSwapchain();
-		void CreateVertexBuffer();
-		void CreateIndexBuffer();
 		void CreateUniformBuffers();
+		void UpdateUniformBuffer(uint32_t currSwapchainImageIndex);
 		void CreateDescriptorPool();
 		void CreateDescriptorSets();
-		void UpdateUniformBuffer(uint32_t currSwapchainImageIndex);
 		void CreateTextureSamplers();
 
 		VkCommandBuffer BeginSingleUseCommands(VkCommandPool pool) const;
@@ -175,26 +171,24 @@ namespace Arcane
 		VkPipeline m_GraphicsPipeline;
 		Shader *m_Shader;
 		VkRenderPass m_RenderPass;
-		VkDeviceMemory m_VertexBufferMemory;
-		VkBuffer m_VertexBuffer;
-		VkDeviceMemory m_IndexBufferMemory;
-		VkBuffer m_IndexBuffer;
+		VertexBuffer *m_VertexBuffer;
+		IndexBuffer *m_IndexBuffer;
 		std::vector<VkBuffer> m_UniformBuffers;
 		std::vector<VkDeviceMemory> m_UniformBuffersMemory;
 		Texture *m_Texture;
 		VkSampler m_GenericTextureSampler;
-		const std::vector<Vertex> vertices = {
-			{{-0.5f, -0.5f, 0.0f}, {1.0f, 0.0f, 0.0f}, {0.0f, 1.0f}},
-			{{0.5f, -0.5f, 0.0f}, {0.0f, 1.0f, 0.0f}, {1.0f, 1.0f}},
-			{{0.5f, 0.5f, 0.0f}, {0.0f, 0.0f, 1.0f}, {1.0f, 0.0f}},
-			{ { -0.5f, 0.5f, 0.0f }, {1.0f, 1.0f, 1.0f}, {0.0f, 0.0f}},
+		const std::vector<float> vertices = {
+			-0.5f, -0.5f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 1.0f,
+			0.5f, -0.5f, 0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 1.0f,
+			0.5f, 0.5f, 0.0f, 0.0f, 0.0f, 1.0f, 1.0f, 0.0f,
+			-0.5f, 0.5f, 0.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f,
 
-			{{-0.5f, -0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}, {0.0f, 1.0f}},
-			{{0.5f, -0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}, {1.0f, 1.0f}},
-			{{0.5f, 0.5f, -0.5f}, {0.0f, 0.0f, 1.0f}, {1.0f, 0.0f}},
-			{{-0.5f, 0.5f, -0.5f}, {1.0f, 1.0f, 1.0f}, {0.0f, 0.0f}}
+			-0.5f, -0.5f, -0.5f, 1.0f, 0.0f, 0.0f, 0.0f, 1.0f,
+			0.5f, -0.5f, -0.5f, 0.0f, 1.0f, 0.0f, 1.0f, 1.0f,
+			0.5f, 0.5f, -0.5f, 0.0f, 0.0f, 1.0f, 1.0f, 0.0f,
+			-0.5f, 0.5f, -0.5f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f,
 		};
-		const std::vector<uint16_t> indices =
+		const std::vector<uint32_t> indices =
 		{
 			0, 2, 1, 2, 0, 3,
 			4, 6, 5, 6, 4, 7

@@ -1,8 +1,10 @@
--Shader should have VErtex type baked in 
--TextureLoader that has a pointer to VulkanAPI and any render phase can use
+-Shader should have Vertex type baked in 
+-Textures should be able to be created empty. Then they don't need a staging buffer etc
+-vkGetPhysicalDeviceMemoryProperties should be saved after the physical device is chosen to stop querying
+-Copy buffer should have the option to use graphics or copy queue
 -Viewport needs to be set as dynamic state (instead of having to create PSOs when that changes) (Should this be done?)
 -Abstract vertex buffer creation (and other buffer types, privatize the functions users do not need)
--After shader creation is abstracted we can delete the stages memory after the PSO is created (might not even want to do this if we plan on creating more PSOs of said object in the future at runtime)
+-Abstract index buffer creation
 -Make sure the shader compiler is included in the project
 -Add ImGUI and delete from file dependency
 -When storing uniform buffers per swapchain buffer. We should only allocate one buffer and use disjoint ranges that way we do not have multiple discrete buffers (note: you only need duplicate data for types that are mutable and CPU accessible like uniform buffers. That way if multiple frames are in-flight you aren't modifying uniform memory for a previous frame. GBuffers only need one copy because it is only ever used by the GPU and only one thing will be reading and writing to it at the same time and they will be synced thanks to semaphores and other GPU sync objects already)

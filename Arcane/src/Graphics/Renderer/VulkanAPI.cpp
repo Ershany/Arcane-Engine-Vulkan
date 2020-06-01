@@ -7,7 +7,11 @@
 #include "Core/Window.h"
 #include "Core/FileUtils.h"
 #include "Graphics/Shader.h"
+#include "Graphics/ShaderLoader.h"
 #include "Graphics/Texture/Texture.h"
+#include "Graphics/Texture/TextureLoader.h"
+#include "Graphics/Buffer/VertexBuffer.h"
+#include "Graphics/Buffer/IndexBuffer.h"
 #include "Vendor/ImGui/imgui.h"
 
 namespace Arcane
@@ -108,8 +112,6 @@ namespace Arcane
 		CreateGraphicsPipeline();
 		CreateFramebuffers();
 		CreateTextureSamplers();
-		CreateVertexBuffer();
-		CreateIndexBuffer();
 		CreateUniformBuffers();
 		CreateDescriptorPool();
 		CreateDescriptorSets();
@@ -142,24 +144,6 @@ namespace Arcane
 
 		ImGui_ImplVulkan_Init()
 		*/
-	}
-
-	Shader* VulkanAPI::CreateShader(const std::string &vertBinaryPath, const std::string &fragBinaryPath)
-	{
-		return new Shader(this, vertBinaryPath, fragBinaryPath);
-	}
-
-	Texture* VulkanAPI::CreateTexture(const std::string &path, TextureSettings *settings)
-	{
-		int texWidth, texHeight, texChannels;
-		stbi_uc *pixels = stbi_load(path.c_str(), &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
-		ARC_ASSERT(pixels, "Asset: Failed to load image");
-
-		Texture *texture = new Texture(this);
-		texture->GenerateTexture((uint32_t)texWidth, (uint32_t)texHeight, pixels);
-
-		stbi_image_free(pixels);
-		return texture;
 	}
 
 	void VulkanAPI::CreateBuffer(VkDeviceSize bufferSize, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkSharingMode sharingMode, VkBuffer *outBuffer, VkDeviceMemory *outBufferMemory) const
@@ -369,12 +353,9 @@ namespace Arcane
 
 		delete m_Shader;
 		delete m_Texture;
+		delete m_VertexBuffer;
+		delete m_IndexBuffer;
 		vkDestroySampler(m_Device, m_GenericTextureSampler, nullptr);
-
-		vkDestroyBuffer(m_Device, m_VertexBuffer, nullptr);
-		vkFreeMemory(m_Device, m_VertexBufferMemory, nullptr);
-		vkDestroyBuffer(m_Device, m_IndexBuffer, nullptr);
-		vkFreeMemory(m_Device, m_IndexBufferMemory, nullptr);
 
 		vkDestroyDevice(m_Device, nullptr);
 
@@ -534,12 +515,20 @@ namespace Arcane
 		vkGetDeviceQueue(m_Device, m_DeviceQueueIndices.computeQueue.value(), 0, &m_ComputeQueue);
 		vkGetDeviceQueue(m_Device, m_DeviceQueueIndices.copyQueue.value(), 0, &m_CopyQueue);
 		vkGetDeviceQueue(m_Device, m_DeviceQueueIndices.presentQueue.value(), 0, &m_PresentQueue); // Present queue will be one of the existing queues
+
+		// Finally initialize things that depend on the logical device
+		ShaderLoader::Initialize(this);
+		TextureLoader::Initialize(this);
 	}
 
 	void VulkanAPI::CreateTemporaryResources()
 	{
-		m_Shader = CreateShader("res/Shaders/simple_vert.spv", "res/Shaders/simple_frag.spv");
-		m_Texture = CreateTexture("res/Textures/rockstar.png");
+		m_Shader = ShaderLoader::LoadShader("res/Shaders/simple_vert.spv", "res/Shaders/simple_frag.spv");
+		TextureSettings texture;
+		texture.TextureFormat = VK_FORMAT_R8G8B8A8_SRGB;
+		m_Texture = TextureLoader::LoadTexture("res/Textures/rockstar.png", &texture);
+		m_VertexBuffer = new VertexBuffer(this, vertices.data(), vertices.size());
+		m_IndexBuffer = new IndexBuffer(this, indices.data(), indices.size());
 	}
 
 	void VulkanAPI::CreateSwapchain()
@@ -927,15 +916,19 @@ namespace Arcane
 			renderPassBegin.clearValueCount = static_cast<uint32_t>(clearValues.size());
 			renderPassBegin.pClearValues = clearValues.data();
 
-			VkBuffer vertexBuffers[] = { m_VertexBuffer };
-			VkDeviceSize offsets[] = { 0 };
-
 			vkCmdBeginRenderPass(m_GraphicsCommandBuffers[i], &renderPassBegin, VK_SUBPASS_CONTENTS_INLINE); // Need to specify if you are using secondary command buffers here
 			vkCmdBindPipeline(m_GraphicsCommandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, m_GraphicsPipeline); // PSO has which subpass we are using
-			vkCmdBindVertexBuffers(m_GraphicsCommandBuffers[i], 0, 1, vertexBuffers, offsets);
-			vkCmdBindIndexBuffer(m_GraphicsCommandBuffers[i], m_IndexBuffer, 0, VK_INDEX_TYPE_UINT16);
+			m_VertexBuffer->Bind(m_GraphicsCommandBuffers[i]);
+			m_IndexBuffer->Bind(m_GraphicsCommandBuffers[i]);
 			vkCmdBindDescriptorSets(m_GraphicsCommandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, m_PipelineLayout, 0, 1, &m_DescriptorSets[i], 0, nullptr);
-			vkCmdDrawIndexed(m_GraphicsCommandBuffers[i], static_cast<uint32_t>(indices.size()), 1, 0, 0, 0);
+			if (m_IndexBuffer != nullptr)
+			{
+				vkCmdDrawIndexed(m_GraphicsCommandBuffers[i], m_IndexBuffer->GetCount(), 1, 0, 0, 0);
+			}
+			else
+			{
+				vkCmdDraw(m_GraphicsCommandBuffers[i], m_VertexBuffer->GetCount(), 1, 0, 0);
+			}
 			vkCmdEndRenderPass(m_GraphicsCommandBuffers[i]);
 			
 			result = vkEndCommandBuffer(m_GraphicsCommandBuffers[i]);
@@ -995,48 +988,6 @@ namespace Arcane
 		CreateCommandBuffers();
 	}
 
-	void VulkanAPI::CreateVertexBuffer()
-	{
-		VkDeviceSize bufferSize = sizeof(vertices[0]) * vertices.size();
-		VkBuffer stagingBuffer;
-		VkDeviceMemory stagingBufferMemory;
-
-		// HOST_COHERENT_BIT guarantees the driver completes the memory transfer operation for the VkMapMemory operation before the next VkQueueSubmit call
-		CreateBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, VK_SHARING_MODE_CONCURRENT, &stagingBuffer, &stagingBufferMemory);
-
-		void *data;
-		vkMapMemory(m_Device, stagingBufferMemory, 0, bufferSize, 0, &data);
-		memcpy(data, vertices.data(), static_cast<size_t>(bufferSize));
-		vkUnmapMemory(m_Device, stagingBufferMemory);
-
-		CreateBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, VK_SHARING_MODE_CONCURRENT, &m_VertexBuffer, &m_VertexBufferMemory);
-		
-		CopyBuffer(stagingBuffer, m_VertexBuffer, bufferSize);
-		vkDestroyBuffer(m_Device, stagingBuffer, nullptr);
-		vkFreeMemory(m_Device, stagingBufferMemory, nullptr);
-	}
-
-	void VulkanAPI::CreateIndexBuffer()
-	{
-		VkDeviceSize bufferSize = sizeof(indices[0]) * indices.size();
-		VkBuffer stagingBuffer;
-		VkDeviceMemory stagingBufferMemory;
-
-		// HOST_COHERENT_BIT guarantees the driver completes the memory transfer operation for the VkMapMemory operation before the next VkQueueSubmit call
-		CreateBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, VK_SHARING_MODE_CONCURRENT, &stagingBuffer, &stagingBufferMemory);
-
-		void *data;
-		vkMapMemory(m_Device, stagingBufferMemory, 0, bufferSize, 0, &data);
-		memcpy(data, indices.data(), static_cast<size_t>(bufferSize));
-		vkUnmapMemory(m_Device, stagingBufferMemory);
-
-		CreateBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, VK_SHARING_MODE_CONCURRENT, &m_IndexBuffer, &m_IndexBufferMemory);
-
-		CopyBuffer(stagingBuffer, m_IndexBuffer, bufferSize);
-		vkDestroyBuffer(m_Device, stagingBuffer, nullptr);
-		vkFreeMemory(m_Device, stagingBufferMemory, nullptr);
-	}
-
 	void VulkanAPI::CreateUniformBuffers()
 	{
 		VkDeviceSize bufferSize = sizeof(StandardMaterialUBO);
@@ -1049,6 +1000,24 @@ namespace Arcane
 			CreateBuffer(bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, VK_SHARING_MODE_EXCLUSIVE, 
 				&m_UniformBuffers[i], &m_UniformBuffersMemory[i]);
 		}
+	}
+
+	void VulkanAPI::UpdateUniformBuffer(uint32_t currSwapchainImageIndex)
+	{
+		static auto startTime = std::chrono::high_resolution_clock::now();
+		auto currentTime = std::chrono::high_resolution_clock::now();
+		float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
+
+		StandardMaterialUBO standardMatUBO;
+		standardMatUBO.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+		standardMatUBO.view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+		standardMatUBO.projection = glm::perspective(glm::radians(45.0f), (float)m_SwapchainExtent.width / (float)m_SwapchainExtent.height, 0.1f, 1000.0f);
+		standardMatUBO.projection[1][1] *= -1.0f; // Y-Coord inverted in Vulkan when compared to OpenGL
+
+		void *data;
+		vkMapMemory(m_Device, m_UniformBuffersMemory[currSwapchainImageIndex], 0, sizeof(standardMatUBO), 0, &data);
+		memcpy(data, &standardMatUBO, sizeof(standardMatUBO));
+		vkUnmapMemory(m_Device, m_UniformBuffersMemory[currSwapchainImageIndex]);
 	}
 
 	void VulkanAPI::CreateDescriptorPool()
@@ -1120,24 +1089,6 @@ namespace Arcane
 
 			vkUpdateDescriptorSets(m_Device, static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, nullptr);
 		}
-	}
-
-	void VulkanAPI::UpdateUniformBuffer(uint32_t currSwapchainImageIndex)
-	{
-		static auto startTime = std::chrono::high_resolution_clock::now();
-		auto currentTime = std::chrono::high_resolution_clock::now();
-		float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
-
-		StandardMaterialUBO standardMatUBO;
-		standardMatUBO.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-		standardMatUBO.view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-		standardMatUBO.projection = glm::perspective(glm::radians(45.0f), (float)m_SwapchainExtent.width / (float)m_SwapchainExtent.height, 0.1f, 1000.0f);
-		standardMatUBO.projection[1][1] *= -1.0f; // Y-Coord inverted in Vulkan when compared to OpenGL
-
-		void *data;
-		vkMapMemory(m_Device, m_UniformBuffersMemory[currSwapchainImageIndex], 0, sizeof(standardMatUBO), 0, &data);
-		memcpy(data, &standardMatUBO, sizeof(standardMatUBO));
-		vkUnmapMemory(m_Device, m_UniformBuffersMemory[currSwapchainImageIndex]);
 	}
 
 	void VulkanAPI::CreateTextureSamplers()

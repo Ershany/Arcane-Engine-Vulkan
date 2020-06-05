@@ -52,7 +52,7 @@ namespace Arcane
 		VkBuffer stagingBuffer;
 		VkDeviceMemory stagingMemory;
 
-		m_Vulkan->CreateBuffer(imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, VK_SHARING_MODE_EXCLUSIVE, &stagingBuffer, &stagingMemory);
+		m_Vulkan->CreateBuffer(imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, VK_SHARING_MODE_CONCURRENT, &stagingBuffer, &stagingMemory);
 
 		void *pointerToMem = nullptr;
 		vkMapMemory(*m_Vulkan->GetDevice(), stagingMemory, 0, imageSize, 0, &pointerToMem);
@@ -60,7 +60,7 @@ namespace Arcane
 		vkUnmapMemory(*m_Vulkan->GetDevice(), stagingMemory);
 
 		m_Vulkan->CreateImage2D(m_Width, m_Height, m_TextureSettings.TextureFormat, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
-			VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, VK_SHARING_MODE_EXCLUSIVE, &m_TextureImage, &m_TextureImageMemory);
+			VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, VK_SHARING_MODE_CONCURRENT, &m_TextureImage, &m_TextureImageMemory);
 
 		// TODO: These should all be recorded by a single command buffer, instead of each function synchronously submitting its own command buffer
 		// Make a function SetupCommandBuffer() & FlushSetupCommandBuffer() or something and record all of these actions into one command buffer

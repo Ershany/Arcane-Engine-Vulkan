@@ -248,9 +248,9 @@ namespace Arcane
 		copyRegion.imageOffset = { 0, 0, 0 };
 		copyRegion.imageExtent = { width, height, 1 };
 
-		VkCommandBuffer commandBuffer = BeginSingleUseCommands(m_GraphicsCommandPool);
+		VkCommandBuffer commandBuffer = BeginSingleUseCommands(m_CopyCommandPool);
 		vkCmdCopyBufferToImage(commandBuffer, buffer, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &copyRegion);
-		EndSingleUseCommands(commandBuffer, m_GraphicsCommandPool, m_GraphicsQueue);
+		EndSingleUseCommands(commandBuffer, m_CopyCommandPool, m_CopyQueue);
 	}
 
 	void VulkanAPI::TransitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout) const
@@ -933,7 +933,7 @@ namespace Arcane
 			vkCmdEndRenderPass(m_GraphicsCommandBuffers[i]);
 			
 			result = vkEndCommandBuffer(m_GraphicsCommandBuffers[i]);
-			ARC_ASSERT(result == VK_SUCCESS, "Failed to record Vulkan command buffer");
+			ARC_ASSERT(result == VK_SUCCESS, "Vulkan: Error occurred during command buffer recording");
 		}
 	}
 
@@ -1152,7 +1152,6 @@ namespace Arcane
 
 		vkQueueSubmit(queue, 1, &submitInfo, VK_NULL_HANDLE);
 		vkQueueWaitIdle(queue);
-
 		vkFreeCommandBuffers(m_Device, pool, 1, &commandBuffer);
 	}
 

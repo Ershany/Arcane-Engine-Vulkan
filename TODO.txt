@@ -14,3 +14,4 @@
 Long term:
 -Use the VulkanMemoryAllocator instead of calling vkAllocateMemory for each buffer/resource
 That way you will have a memory pool that you can use memory from, thus lowering the driver overhead of those frequent allocation calls
+-Once a sample is up and running, test current resource implementation of VK_SHARING_MODE_CONCURRENT and switch it to VK_SHARING_MODE_EXCLUSIVE and transfer the resources after creation to the graphics queue. Any performance difference?

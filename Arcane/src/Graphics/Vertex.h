@@ -17,6 +17,8 @@ namespace Arcane
 			bindingDescription.stride = sizeof(Vertex);
 			bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX; // This is where you can use instance rendering
 
+			// TODO: Add another slot with binding = 1, that contains the instance data that will be fed to the vertex shader at a per instance rate
+
 			return bindingDescription;
 		}
 
@@ -38,6 +40,8 @@ namespace Arcane
 			attributesDescription[2].location = 2;
 			attributesDescription[2].offset = offsetof(Vertex, uv);
 			attributesDescription[2].format = VK_FORMAT_R32G32_SFLOAT;
+
+			// TODO: Add instance bindings if needed
 
 			return attributesDescription;
 		}
